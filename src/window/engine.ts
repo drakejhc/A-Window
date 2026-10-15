@@ -1,0 +1,247 @@
+/**
+ * The live window: one clock, weather feed and soundscape shared by every canvas on the page.
+ * React reads it through useSyncExternalStore (see src/ui/use-window.ts); it is created on first use.
+ */
+import { formatClock, localParts, nextSunEvents } from "./astro";
+import { Ambience } from "./audio";
+import { CITIES, cityById, guessCity, type City } from "./cities";
+import { Environment, FALLBACK_WEATHER } from "./environment";
+import { atticRoom } from "./packs/attic-room";
+import { fjordCabin } from "./packs/fjord-cabin";
+import type { AnyPack } from "./types";
+import { describe, fetchCurrent, type Weather } from "./weather";
+
+export const PACKS: AnyPack[] = [atticRoom, fjordCabin];
+export type WeatherStatus = "loading" | "live" | "stale" | "offline" | "preset";
+export type WindowPrefs = { city: string; sound: boolean; volume: number; preset: number | null; scene: string };
+export type WindowSnapshot = {
+  city: City;
+  prefs: WindowPrefs;
+  pack: AnyPack;
+  status: WeatherStatus;
+  weather: Weather;
+  /** Milliseconds the scene is shifted from the real time, for previewing dusk or night. */
+  shift: number;
+};
+
+type Tickable = { tick: (env: Environment, dt: number) => void };
+
+const PREFS_KEY = "a-window:window-v1";
+const REFRESH_MS = 15 * 60_000;
+const SEASON_TEMP = { winter: 1, spring: 13, summer: 24, autumn: 14 } as const;
+
+function loadPrefs(): WindowPrefs {
+  const fallback: WindowPrefs = {
+    city: guessCity(Intl.DateTimeFormat().resolvedOptions().timeZone).id,
+    sound: false,
+    volume: 0.6,
+    preset: null,
+    scene: "auto",
+  };
+  try {
+    const p = JSON.parse(window.localStorage.getItem(PREFS_KEY) ?? "{}") as Partial<WindowPrefs>;
+    return {
+      city: cityById(p.city) ? p.city! : fallback.city,
+      sound: typeof p.sound === "boolean" ? p.sound : fallback.sound,
+      volume: typeof p.volume === "number" ? Math.min(1, Math.max(0, p.volume)) : fallback.volume,
+      preset: typeof p.preset === "number" ? p.preset : null,
+      scene: PACKS.some((k) => k.id === p.scene) ? p.scene! : "auto",
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+/** Auto puts far-north and far-south cities in the cabin, everywhere else in the attic. */
+export function packFor(scene: string, city: City): AnyPack {
+  return PACKS.find((p) => p.id === scene) ?? (Math.abs(city.lat) >= 58 ? fjordCabin : atticRoom);
+}
+
+export class WindowEngine {
+  readonly env: Environment;
+  readonly audio = new Ambience();
+  private prefs: WindowPrefs;
+  private shift = 0;
+  private live: Weather | null = null;
+  private status: WeatherStatus = "loading";
+  private tickables = new Set<Tickable>();
+  private listeners = new Set<() => void>();
+  private snapshot!: WindowSnapshot;
+  private raf = 0;
+  private last = 0;
+  private refresh: number | undefined;
+  private fetchCtl: AbortController | null = null;
+
+  constructor() {
+    this.prefs = loadPrefs();
+    this.env = new Environment(this.city);
+    this.env.update(this.now(), 0);
+    this.env.setWeather(this.effectiveWeather(), true);
+    this.audio.setEnv(this.env);
+    this.audio.setVolume(this.prefs.volume);
+    this.env.onThunder = (d) => this.audio.thunder(d);
+    window.addEventListener("pointerdown", () => this.audio.unlock());
+    window.addEventListener("keydown", () => this.audio.unlock());
+    this.publish();
+  }
+
+  get city(): City {
+    return cityById(this.prefs.city) ?? CITIES[0]!;
+  }
+
+  /** The scene's current time, including any preview shift. */
+  now() {
+    return new Date(Date.now() + this.shift);
+  }
+
+  subscribe = (fn: () => void) => {
+    this.listeners.add(fn);
+    return () => {
+      this.listeners.delete(fn);
+    };
+  };
+
+  getSnapshot = () => this.snapshot;
+
+  /** Runs the shared clock (and weather, and sound when it is on) while at least one canvas is showing. */
+  attach(t: Tickable) {
+    this.tickables.add(t);
+    if (this.tickables.size === 1) this.start();
+    return () => {
+      this.tickables.delete(t);
+      if (this.tickables.size === 0) this.stop();
+    };
+  }
+
+  setCity(id: string) {
+    const city = cityById(id);
+    if (!city || city.id === this.prefs.city) return;
+    this.prefs = { ...this.prefs, city: city.id };
+    this.live = null;
+    this.status = "loading";
+    this.env.setCity(city);
+    this.env.update(this.now(), 0);
+    this.env.setWeather(this.effectiveWeather(), true);
+    this.save();
+    if (this.tickables.size) void this.loadWeather();
+  }
+
+  setScene(scene: string) {
+    this.prefs = { ...this.prefs, scene };
+    this.save();
+  }
+
+  setSound(on: boolean) {
+    this.prefs = { ...this.prefs, sound: on };
+    if (on && this.tickables.size) this.audio.start();
+    else this.audio.stop();
+    this.save();
+  }
+
+  setVolume(v: number) {
+    this.prefs = { ...this.prefs, volume: v };
+    this.audio.setVolume(v);
+    this.save();
+  }
+
+  /** null follows the live weather; a WMO code pins the scene to those conditions. */
+  setPreset(code: number | null) {
+    this.prefs = { ...this.prefs, preset: code };
+    this.env.setWeather(this.effectiveWeather());
+    this.save();
+  }
+
+  /** Shows the city at a given local hour (0–24), or follows the real time again when null. */
+  previewHour(hour: number | null) {
+    if (hour === null) this.shift = 0;
+    else {
+      const lp = localParts(new Date(), this.city.tz);
+      this.shift = (hour - (lp.hour + lp.minute / 60 + lp.second / 3600)) * 3600_000;
+    }
+    this.publish();
+  }
+
+  /** Next sunrise or sunset in the window's city, as a short label. */
+  sunLabel() {
+    const c = this.city, now = this.now(), { sunrise, sunset } = nextSunEvents(now, c.lat, c.lon);
+    if (!sunrise && !sunset) return this.env.sunAlt > 0 ? "Midnight sun" : "Polar night";
+    if (sunset && (!sunrise || sunset < sunrise)) return `Sunset ${formatClock(sunset, c.tz)}`;
+    return `Sunrise ${formatClock(sunrise!, c.tz)}`;
+  }
+
+  private effectiveWeather(): Weather {
+    const seasonal = SEASON_TEMP[this.env.season];
+    if (this.prefs.preset === null) return this.live ?? { ...FALLBACK_WEATHER, temp: seasonal };
+    const w = describe(this.prefs.preset);
+    let temp = this.live?.temp ?? seasonal;
+    if (w.snow) temp = Math.min(temp, -1);
+    else if (w.rain && temp < 2) temp = 4;
+    return { ...w, temp, wind: this.live?.wind ?? (w.thunder ? 30 : w.rain ? 14 : 8), updated: null };
+  }
+
+  private start() {
+    this.last = performance.now();
+    const loop = (ts: number) => {
+      const dt = Math.min(0.1, Math.max(0, (ts - this.last) / 1000));
+      this.last = ts;
+      this.env.update(this.now(), dt);
+      for (const t of this.tickables) t.tick(this.env, dt);
+      this.raf = requestAnimationFrame(loop);
+    };
+    this.raf = requestAnimationFrame(loop);
+    void this.loadWeather();
+    this.refresh = window.setInterval(() => void this.loadWeather(), REFRESH_MS);
+    if (this.prefs.sound) this.audio.start();
+  }
+
+  private stop() {
+    cancelAnimationFrame(this.raf);
+    window.clearInterval(this.refresh);
+    this.fetchCtl?.abort();
+    this.audio.stop();
+  }
+
+  private async loadWeather() {
+    this.fetchCtl?.abort();
+    const ctl = (this.fetchCtl = new AbortController());
+    const first = !this.live;
+    try {
+      this.live = await fetchCurrent(this.city.lat, this.city.lon, ctl.signal);
+      this.status = "live";
+    } catch {
+      if (ctl.signal.aborted) return;
+      this.status = this.live ? "stale" : "offline";
+    }
+    this.env.setWeather(this.effectiveWeather(), first && this.status === "live" && this.prefs.preset === null);
+    this.publish();
+  }
+
+  private save() {
+    try {
+      window.localStorage.setItem(PREFS_KEY, JSON.stringify(this.prefs));
+    } catch {
+      /* storage unavailable: preferences last for this session */
+    }
+    this.publish();
+  }
+
+  private publish() {
+    const pack = packFor(this.prefs.scene, this.city);
+    this.audio.setWeights(pack.ambience);
+    this.snapshot = {
+      city: this.city,
+      prefs: this.prefs,
+      pack,
+      status: this.prefs.preset !== null ? "preset" : this.status,
+      weather: this.effectiveWeather(),
+      shift: this.shift,
+    };
+    for (const fn of this.listeners) fn();
+  }
+}
+
+let engine: WindowEngine | null = null;
+export function getWindowEngine() {
+  engine ??= new WindowEngine();
+  return engine;
+}
