@@ -11,6 +11,8 @@ import { useWindow } from "./use-window";
 export const FOCUS_LENGTHS = [15, 25, 50, 90];
 
 type Props = {
+  layout: "full" | "side";
+  onLayout: (l: "full" | "side") => void;
   sheetOpen: boolean;
   onToggleSheet: () => void;
   focusing: boolean;
@@ -21,7 +23,7 @@ type Props = {
 };
 
 /** The controls along the bottom: the window's city, scene and sound, Focus, and the day sheet. */
-export function Dock({ sheetOpen, onToggleSheet, focusing, focusLabel, onFocus, focusMinutes, onFocusMinutes }: Props) {
+export function Dock({ layout, onLayout, sheetOpen, onToggleSheet, focusing, focusLabel, onFocus, focusMinutes, onFocusMinutes }: Props) {
   const { engine, snap } = useWindow();
   const [adjusting, setAdjusting] = useState(false);
   const following = snap.shift === 0;
@@ -78,6 +80,17 @@ export function Dock({ sheetOpen, onToggleSheet, focusing, focusLabel, onFocus, 
               <output>{fmt(following ? hourNow() : hour)}</output>
             </div>
           </div>
+          <div className="field">
+            <span>Planner</span>
+            <div className="seg wide" role="radiogroup" aria-label="Planner layout">
+              <button type="button" role="radio" aria-checked={layout === "full"} onClick={() => onLayout("full")}>
+                Full workspace
+              </button>
+              <button type="button" role="radio" aria-checked={layout === "side"} onClick={() => onLayout("side")}>
+                Side sheet
+              </button>
+            </div>
+          </div>
           <label className="field">
             <span>Free focus session</span>
             <select value={focusMinutes} onChange={(e) => onFocusMinutes(Number(e.target.value))}>
@@ -129,7 +142,7 @@ export function Dock({ sheetOpen, onToggleSheet, focusing, focusLabel, onFocus, 
         </button>
         <button type="button" className="ctl" aria-pressed={sheetOpen} onClick={onToggleSheet} title="Day sheet (P)">
           <Icon name="panel" />
-          Day
+          Planner
         </button>
         <button type="button" className="ctl icon" aria-expanded={adjusting} aria-label="Adjust the window" title="Adjust" onClick={() => setAdjusting((v) => !v)}>
           <Icon name="sliders" />

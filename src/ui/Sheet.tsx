@@ -22,7 +22,7 @@ type Props = {
   onNewEvent: () => void;
   onOpen: (kind: Kind, id: string) => void;
   onToggle: (id: string) => void;
-  onPlace: (kind: Kind, id: string, start: number) => void;
+  onPlace: (kind: Kind, id: string, date: string, start: number) => void;
   onSchedule: (id: string) => void;
   onBlocked: () => void;
   onReplan: () => void;
@@ -121,7 +121,7 @@ export function Sheet(p: Props) {
         )}
       </form>
 
-      <Timeline data={state} date={selected} isToday={selected === todayKey} now={p.now} currentId={p.currentId} onOpen={p.onOpen} onToggle={p.onToggle} onPlace={p.onPlace} onBlocked={p.onBlocked} />
+      <Timeline data={state} days={[selected]} todayKey={todayKey} now={p.now} currentId={p.currentId} onOpen={p.onOpen} onToggle={p.onToggle} onPlace={p.onPlace} onBlocked={p.onBlocked} />
 
       <Tray tasks={state.tasks} open={p.trayOpen} onOpenChange={p.onTrayOpen} onOpen={(id) => p.onOpen("task", id)} onToggle={p.onToggle} onSchedule={p.onSchedule} />
     </aside>

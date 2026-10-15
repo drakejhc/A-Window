@@ -8,11 +8,14 @@ import { Dock, FOCUS_LENGTHS } from "@/ui/Dock";
 import { draftFor, Editor, newDraft, type Draft } from "@/ui/Editor";
 import { FocusCard, type FocusTarget } from "@/ui/FocusCard";
 import { Icon } from "@/ui/icons";
+import { QuickAddDialog } from "@/ui/QuickAddDialog";
 import { Readout } from "@/ui/Readout";
 import { Replan } from "@/ui/Replan";
 import { Scene } from "@/ui/Scene";
 import { Sheet } from "@/ui/Sheet";
 import { useWindow } from "@/ui/use-window";
+import { Workspace, type Mode, type View } from "@/ui/Workspace";
+import type { Bucket } from "@/planner/model";
 
 const SIDE_W = 400;
 
@@ -36,6 +39,26 @@ function usePref<T>(key: string, initial: T) {
   return [value, setValue] as const;
 }
 
+export type Layout = "full" | "side";
+
+/** Keeps an element mounted while it fades out, and lets it fade in after mounting. */
+function useFade(open: boolean, ms = 450) {
+  const [mounted, setMounted] = useState(open);
+  const [visible, setVisible] = useState(open);
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      let inner = 0;
+      const outer = requestAnimationFrame(() => (inner = requestAnimationFrame(() => setVisible(true))));
+      return () => (cancelAnimationFrame(outer), cancelAnimationFrame(inner));
+    }
+    setVisible(false);
+    const t = window.setTimeout(() => setMounted(false), ms);
+    return () => window.clearTimeout(t);
+  }, [open, ms]);
+  return { mounted, visible };
+}
+
 const isTyping = (t: EventTarget | null) => t instanceof HTMLElement && !!t.closest("input, textarea, select, [contenteditable]");
 
 export function App() {
@@ -56,6 +79,11 @@ export function App() {
   const [replan, setReplan] = useState<ReplanResult | null>(null);
   const [toast, setToast] = useState<{ message: string; undo?: () => void; key: number } | null>(null);
   const [sheetOpen, setSheetOpen] = usePref("sheet", true);
+  const [layout, setLayout] = usePref<Layout>("layout", "full");
+  const [view, setView] = usePref<View>("view", "day");
+  const [mode, setMode] = useState<Mode>("calendar");
+  const [bucket, setBucket] = useState<Bucket>("Today");
+  const [palette, setPalette] = useState(false);
   const [trayOpen, setTrayOpen] = usePref("tray", true);
   const [focusMinutes, setFocusMinutes] = usePref("focus", 25);
   const [idle, setIdle] = useState(false);
@@ -64,7 +92,10 @@ export function App() {
 
   const current = currentBlock(state, todayKey, now);
   const behind = state.tasks.filter((t) => isSlipped(t, todayKey, now)).length;
-  const sideOpen = sheetOpen || !!focus;
+  const full = layout === "full";
+  // Full layout: the workspace fades in over the window, and fades out for Focus.
+  const ws = useFade(full && sheetOpen && !focus);
+  const sideOpen = (!full && sheetOpen) || !!focus;
   const wide = width >= 1100;
   // With the sheet open, the window moves left so the two sit side by side.
   const align = sideOpen && wide ? clamp((width - SIDE_W - 40) / 2 / width, 0.3, 0.5) : 0.5;
@@ -85,6 +116,8 @@ export function App() {
     setDraft(draftFor(state, kind, id, selected));
     setSheetOpen(true);
   }
+
+  const newEvent = () => setDraft(newDraft("event", selected, selected === todayKey ? `${String(Math.min(22, Math.ceil(now))).padStart(2, "0")}:00` : "09:00"));
 
   function saveDraft() {
     if (!draft) return;
@@ -170,23 +203,37 @@ export function App() {
   }
 
   // Keyboard shortcuts, ignored while typing.
-  const keys = useRef({ startFocus, todayKey, selected, focusing: false, editing: false });
-  keys.current = { startFocus, todayKey, selected, focusing: !!focus, editing: !!draft };
+  const keys = useRef({ startFocus, openReplan, todayKey, selected, focusing: false, editing: false, full, workspace: false, modal: false });
+  keys.current = { startFocus, openReplan, todayKey, selected, focusing: !!focus, editing: !!draft, full, workspace: ws.visible, modal: palette || !!replan };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const k = keys.current;
       if (e.key === "Escape") {
+        if (k.modal || k.focusing) return;
         if (k.editing) setDraft(null);
+        else if (k.workspace && !isTyping(e.target)) setSheetOpen(false);
         return;
       }
-      if (isTyping(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        if (!k.focusing) setPalette(true);
+        return;
+      }
+      if (isTyping(e.target) || e.metaKey || e.ctrlKey || e.altKey || k.modal) return;
       const key = e.key.toLowerCase();
       if (key === "/" || key === "n") {
         e.preventDefault();
-        setSheetOpen(true);
         setDraft(null);
-        window.setTimeout(() => quickAddRef.current?.focus(), 0);
-      } else if (key === "f" && !k.focusing) k.startFocus();
+        if (k.full) setPalette(true);
+        else {
+          setSheetOpen(true);
+          window.setTimeout(() => quickAddRef.current?.focus(), 0);
+        }
+      } else if (k.full && k.workspace && (key === "d" || key === "w" || key === "m")) {
+        setMode("calendar");
+        setView(key === "d" ? "day" : key === "w" ? "week" : "month");
+      } else if (key === "r" && !k.focusing) k.openReplan();
+      else if (key === "f" && !k.focusing) k.startFocus();
       else if (key === "p" && !k.focusing) setSheetOpen((v) => !v);
       else if (key === "t") setSelected(k.todayKey);
       else if (e.key === "ArrowLeft" && !k.focusing) setSelected(toKey(addDays(fromKey(k.selected), -1)));
@@ -194,7 +241,7 @@ export function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [setSheetOpen]);
+  }, [setSheetOpen, setView]);
 
   // The bottom controls fade away when you stop moving, leaving the window and the day.
   useEffect(() => {
@@ -218,32 +265,77 @@ export function App() {
     };
   }, []);
 
+  const editor = draft && (
+    <Editor
+      draft={draft}
+      onChange={setDraft}
+      onSave={saveDraft}
+      onCancel={() => setDraft(null)}
+      onDelete={deleteDraft}
+      onUnschedule={() => {
+        if (!draft.id) return;
+        planner.unschedule(draft.id);
+        setDraft(null);
+        notify(`“${draft.title}” is back in your list`);
+      }}
+    />
+  );
+  const startFresh = () => {
+    const before = state;
+    planner.startFresh();
+    withUndo("Cleared the example plan", before);
+  };
+  const place = (kind: Kind, id: string, date: string, start: number) => planner.place(kind, id, date, start);
+
   return (
-    <div className="app" data-idle={idle || undefined} data-side={sideOpen || undefined} style={{ "--side-w": `${SIDE_W}px` } as React.CSSProperties}>
+    <div className="app" data-idle={idle || undefined} data-side={sideOpen || undefined} data-workspace={ws.visible || undefined} style={{ "--side-w": `${SIDE_W}px` } as React.CSSProperties}>
       <Scene align={align} />
       <Readout />
 
-      {focus ? (
+      {focus && (
         <div className="focus-wrap">
           <FocusCard target={focus} now={now} onChime={() => engine.audio.chime()} onExit={(s) => endFocus(s, false)} onComplete={(s) => endFocus(s, true)} />
         </div>
-      ) : (
+      )}
+
+      {full && ws.mounted && (
+        <Workspace
+          state={state}
+          visible={ws.visible}
+          selected={selected}
+          todayKey={todayKey}
+          now={now}
+          currentId={current?.id}
+          behind={behind}
+          view={view}
+          mode={mode}
+          bucket={bucket}
+          trayOpen={trayOpen}
+          drawer={editor}
+          onView={setView}
+          onMode={setMode}
+          onBucket={setBucket}
+          onTrayOpen={setTrayOpen}
+          onSelect={setSelected}
+          onOpen={open}
+          onToggle={planner.toggleTask}
+          onPlace={place}
+          onSchedule={scheduleNext}
+          onBlocked={() => notify("That time is taken")}
+          onReplan={openReplan}
+          onFocus={startFocus}
+          onQuickAdd={() => setPalette(true)}
+          onNewEvent={newEvent}
+          onStartFresh={startFresh}
+        />
+      )}
+
+      {!full &&
+        !focus &&
         sheetOpen &&
         (draft ? (
           <aside className="sheet" aria-label={draft.id ? "Edit item" : "New item"}>
-            <Editor
-              draft={draft}
-              onChange={setDraft}
-              onSave={saveDraft}
-              onCancel={() => setDraft(null)}
-              onDelete={deleteDraft}
-              onUnschedule={() => {
-                if (!draft.id) return;
-                planner.unschedule(draft.id);
-                setDraft(null);
-                notify(`“${draft.title}” is back in your list`);
-              }}
-            />
+            {editor}
           </aside>
         ) : (
           <Sheet
@@ -257,22 +349,17 @@ export function App() {
             onTrayOpen={setTrayOpen}
             onSelect={setSelected}
             onQuickAdd={quickAdd}
-            onNewEvent={() => setDraft(newDraft("event", selected, selected === todayKey ? `${String(Math.min(22, Math.ceil(now))).padStart(2, "0")}:00` : "09:00"))}
+            onNewEvent={newEvent}
             onOpen={open}
             onToggle={planner.toggleTask}
-            onPlace={(kind, id, start) => planner.place(kind, id, selected, start)}
+            onPlace={place}
             onSchedule={scheduleNext}
             onBlocked={() => notify("That time is taken")}
             onReplan={openReplan}
-            onStartFresh={() => {
-              const before = state;
-              planner.startFresh();
-              withUndo("Cleared the example plan", before);
-            }}
+            onStartFresh={startFresh}
             quickAddRef={quickAddRef}
           />
-        ))
-      )}
+        ))}
 
       <Dock
         sheetOpen={sheetOpen && !focus}
@@ -282,7 +369,14 @@ export function App() {
         onFocus={startFocus}
         focusMinutes={focusMinutes}
         onFocusMinutes={setFocusMinutes}
+        layout={layout}
+        onLayout={(l) => {
+          setLayout(l);
+          setDraft(null);
+        }}
       />
+
+      {palette && <QuickAddDialog todayKey={todayKey} onAdd={quickAdd} onClose={() => setPalette(false)} />}
 
       {toast && (
         <div className="toast" role="status" key={toast.key}>

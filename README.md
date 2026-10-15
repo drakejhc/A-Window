@@ -23,16 +23,21 @@ open it on a Mac, right-click it and choose **Open**. The desktop app keeps its 
 
 ## Using it
 
-- **The day sheet** shows the selected day. Pick a day from the week strip, or use ← and → (T jumps to today).
-- **Quick add** understands phrases like `Gym tomorrow 7am 45m #health`. With a time it goes on the timeline;
-  with a day but no time it takes the next free slot; otherwise it goes to a list. Press `/` or `N` to start typing.
-- **Drag** blocks to move them, or drag tasks up from *Unscheduled*. The clock button finds the next free slot.
+- **The planner** fades in over the window with the **Planner** button (or `P`) and fades out again when you
+  press it once more, or when you start Focus. `Esc` hides it too. It has Daylight's layout: a sidebar with
+  the mini calendar, task lists and today's progress; Day, Week and Month views (`D`, `W`, `M`); and the task
+  tray on the right. Prefer the window to stay in view? *Adjust → Planner → Side sheet* puts a slimmer day
+  sheet beside the window instead.
+- **Quick add** (`⌘K`, `/` or `N`) understands phrases like `Gym tomorrow 7am 45m #health`. With a time it goes
+  on the timeline; with a day but no time it takes the next free slot; otherwise it goes to a list.
+- **Drag** blocks to move them (across days in Week view), or drag tasks from the tray. The clock button on a
+  tray task finds the next free slot.
 - **Click** a block or task to edit it: category, time, length, checklist, notes, or delete (with undo).
-- **Replan** appears when tasks fall behind and moves them into the free time left today.
+- **Replan** (`R`) moves tasks that fell behind into the free time left today.
 - **Focus** (`F`) works on the block happening now, or the next one, or a free session when the day is clear.
   Focused minutes are recorded on the block. `Space` pauses and `Esc` exits.
 - **The window**: choose a city and scene in the bottom bar, and turn sound on. *Adjust* lets you pick the
-  weather by hand, preview another time of day, set the free focus length and the volume. `P` hides the day sheet.
+  weather by hand, preview another time of day, set the free focus length and the volume.
 
 ## How it fits together
 
