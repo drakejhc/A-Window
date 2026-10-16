@@ -11,7 +11,7 @@ export function useWindow() {
 }
 
 // Only say where the weather comes from when it's real or chosen; otherwise say nothing about it.
-const SOURCE = { live: "Live weather", stale: "Live weather", loading: "", offline: "", preset: "Chosen weather" } as const;
+const SOURCE = { live: "Live weather", stale: "Last known weather · retrying", loading: "", offline: "Weather unavailable · retrying", preset: "Chosen weather" } as const;
 
 /** The window city's clock, conditions and next sun event, refreshed every 15 seconds. */
 export function useWindowSummary() {

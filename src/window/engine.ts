@@ -57,6 +57,16 @@ const PREFS_KEY = "a-window:window-v1";
 const REFRESH_MS = 15 * 60_000;
 const SEASON_TEMP = { winter: 1, spring: 13, summer: 24, autumn: 14 } as const;
 
+/** Rooms that were retired, and the room that took each one's place. */
+const ROOM_ALIASES: Record<string, string> = {
+  "lofi-desk": "painted",
+  "lofi-bedroom": "painted-bedroom",
+  lofi: "painted",
+  minimal: "painted",
+  attic: "listening",
+  cabin: "cabin3d",
+};
+
 function loadPrefs(): WindowPrefs {
   const fallback: WindowPrefs = {
     city: guessCity(Intl.DateTimeFormat().resolvedOptions().timeZone).id,
@@ -68,11 +78,13 @@ function loadPrefs(): WindowPrefs {
   };
   try {
     const p = JSON.parse(window.localStorage.getItem(PREFS_KEY) ?? "{}") as Partial<WindowPrefs> & { scene?: string };
-    // Earlier versions had one "scene" covering both halves.
+    // Earlier versions had one "scene" covering both halves, and some rooms have since been retired.
     if (p.scene === "attic-room") Object.assign(p, { view: "rooftops", room: "attic" });
     if (p.scene === "fjord-cabin") Object.assign(p, { view: "fjord", room: "cabin" });
+    if (p.room && ROOM_ALIASES[p.room]) p.room = ROOM_ALIASES[p.room];
+    const known = !!p.city && (!!cityById(p.city) || p.custom?.id === p.city);
     return {
-      city: cityById(p.city) || p.custom?.id === p.city ? p.city! : fallback.city,
+      city: known ? p.city! : fallback.city,
       sound: typeof p.sound === "boolean" ? p.sound : fallback.sound,
       volume: typeof p.volume === "number" ? Math.min(1, Math.max(0, p.volume)) : fallback.volume,
       preset: typeof p.preset === "number" ? p.preset : null,
@@ -124,6 +136,10 @@ export class WindowEngine {
   private last = 0;
   private refresh: number | undefined;
   private fetchCtl: AbortController | null = null;
+  private running = false;
+  private stopTimer: number | undefined;
+  private retry: number | undefined;
+  private failures = 0;
 
   /** silent: never plays sound (the desktop wallpaper). */
   constructor(private silent = false) {
@@ -139,6 +155,10 @@ export class WindowEngine {
     // Another window (the wallpaper, or a second tab) changed the window's settings.
     window.addEventListener("storage", (e) => {
       if (e.key === PREFS_KEY) this.adopt(loadPrefs());
+    });
+    // Back online: fetch the weather straight away.
+    window.addEventListener("online", () => {
+      if (this.running && this.status !== "live") void this.loadWeather();
     });
     this.publish();
   }
@@ -161,13 +181,15 @@ export class WindowEngine {
 
   getSnapshot = () => this.snapshot;
 
-  /** Runs the shared clock (and weather, and sound when it is on) while at least one canvas is showing. */
+  /** Runs the shared clock (and weather, and sound when it is on) while at least one canvas is showing. Stopping
+   *  waits a moment, so swapping one canvas for another (a 2D room for a 3D one) doesn't restart everything. */
   attach(t: Tickable) {
+    window.clearTimeout(this.stopTimer);
     this.tickables.add(t);
-    if (this.tickables.size === 1) this.start();
+    if (this.tickables.size === 1 && !this.running) this.start();
     return () => {
       this.tickables.delete(t);
-      if (this.tickables.size === 0) this.stop();
+      if (this.tickables.size === 0) this.stopTimer = window.setTimeout(() => this.tickables.size === 0 && this.stop(), 1500);
     };
   }
 
@@ -256,6 +278,7 @@ export class WindowEngine {
   }
 
   private start() {
+    this.running = true;
     this.last = performance.now();
     const loop = (ts: number) => {
       const dt = Math.min(0.1, Math.max(0, (ts - this.last) / 1000));
@@ -272,22 +295,37 @@ export class WindowEngine {
   }
 
   private stop() {
+    this.running = false;
     cancelAnimationFrame(this.raf);
     window.clearInterval(this.refresh);
+    window.clearTimeout(this.retry);
     this.fetchCtl?.abort();
     this.audio.stop();
   }
 
   private async loadWeather() {
     this.fetchCtl?.abort();
+    window.clearTimeout(this.retry);
     const ctl = (this.fetchCtl = new AbortController());
     const first = !this.live;
+    // A stalled connection counts as a failure after 10 seconds, rather than "loading" forever.
+    let timedOut = false;
+    const timer = window.setTimeout(() => {
+      timedOut = true;
+      ctl.abort();
+    }, 10_000);
     try {
       this.live = await fetchCurrent(this.city.lat, this.city.lon, ctl.signal);
       this.status = "live";
+      this.failures = 0;
     } catch {
-      if (ctl.signal.aborted) return;
+      if (ctl.signal.aborted && !timedOut) return;
       this.status = this.live ? "stale" : "offline";
+      // Try again soon (1, 2, then 5 minutes) instead of waiting for the next 15-minute refresh.
+      const wait = [60_000, 120_000, 300_000][Math.min(this.failures++, 2)]!;
+      if (this.running) this.retry = window.setTimeout(() => void this.loadWeather(), wait);
+    } finally {
+      window.clearTimeout(timer);
     }
     this.env.setWeather(this.effectiveWeather(), first && this.status === "live" && this.prefs.preset === null);
     this.publish();
