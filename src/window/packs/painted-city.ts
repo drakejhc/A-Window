@@ -36,6 +36,7 @@ function skyline(g: Geom, rng: Rng, b: (typeof BANDS)[number], margin: number) {
 export const paintedCity: ViewPack<PaintedCityData> = {
   id: "painted-city",
   name: "Painted city",
+  painted: true,
   ambience: { rain: 1, wind: 0.5, city: 1, fire: 0, crickets: 0.1, birds: 0.3 },
 
   build(g, rng) {

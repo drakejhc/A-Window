@@ -88,6 +88,6 @@ describe("auto room", () => {
     expect(at("lisbon")).toBe("mediterranean");
     expect(at("vancouver")).toBe("listening");
     expect(sceneFor({ view: "auto", room: "auto" }, CITIES.find((c) => c.id === "kyoto")!).room3d).toBe("japanese");
-    expect(sceneFor({ view: "auto", room: "lofi" }, CITIES.find((c) => c.id === "kyoto")!).room3d).toBeNull();
+    expect(sceneFor({ view: "auto", room: "painted" }, CITIES.find((c) => c.id === "kyoto")!).room3d).toBeNull();
   });
 });

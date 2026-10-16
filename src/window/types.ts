@@ -49,6 +49,8 @@ export interface ViewPack<D> {
   drawLandscape(ctx: CanvasRenderingContext2D, env: FrameEnv, g: Geom, d: D, P: Painter): void;
   /** Things close to the glass, still clipped. */
   drawForeground(ctx: CanvasRenderingContext2D, env: FrameEnv, g: Geom, d: D, P: Painter): void;
+  /** A painted view: the renderer softens its clouds to match. */
+  painted?: boolean;
 }
 
 /** The room around the window (framed mode only). Its data may include `turntable: {x, y}`, the spot on the

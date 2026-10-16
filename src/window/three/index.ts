@@ -1,8 +1,6 @@
 /** The 3D rooms, loaded on demand so the 2D rooms don't carry three.js. */
 import { japaneseRoom } from "./japanese-room";
 import { listeningRoom } from "./listening-room";
-import { lofiBedroom } from "./lofi-bedroom";
-import { lofiDesk } from "./lofi-desk";
 import { mediterranean } from "./mediterranean";
 import { nordicCabin } from "./nordic-cabin";
 import type { Design } from "./room3d";
@@ -13,6 +11,4 @@ export const DESIGNS: Record<string, Design> = {
   cabin: nordicCabin,
   japanese: japaneseRoom,
   mediterranean,
-  "lofi-desk": lofiDesk,
-  "lofi-bedroom": lofiBedroom,
 };

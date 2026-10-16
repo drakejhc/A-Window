@@ -9,10 +9,10 @@ import { Environment, FALLBACK_WEATHER } from "./environment";
 import { atticRoom } from "./packs/attic-room";
 import { fjordCabin } from "./packs/fjord-cabin";
 import { cityView } from "./packs/city";
-import { lofiStudy } from "./packs/lofi-study";
 import { paintedCity } from "./packs/painted-city";
+import { paintedBedroom } from "./packs/painted-bedroom";
 import { paintedStudy } from "./packs/painted-study";
-import { warmMinimal } from "./packs/warm-minimal";
+import { paintedValley } from "./packs/painted-valley";
 import type { AmbienceWeights, AnyRoom, AnyView } from "./types";
 import { describe, fetchCurrent, type Weather } from "./weather";
 import { isWallpaper } from "../desktop";
@@ -24,21 +24,17 @@ export const VIEWS: { id: string; name: string; pack: AnyView }[] = [
   { id: "fjord", name: "Fjord", pack: fjordCabin },
   { id: "city", name: "City skyline", pack: cityView },
   { id: "painted-city", name: "Painted city", pack: paintedCity },
+  { id: "painted-valley", name: "Painted valley", pack: paintedValley },
 ];
 /** `three` names a rendered 3D room (see `three/`); `pack` is the 2D room shown where WebGL isn't available.
  *  `view` is the view Auto shows from this room. */
 export const ROOMS: { id: string; name: string; pack: AnyRoom; three?: string; view?: string }[] = [
   { id: "painted", name: "Midnight study (painted)", pack: paintedStudy, view: "painted-city" },
-  { id: "listening", name: "Listening room (3D)", pack: lofiStudy, three: "listening" },
-  { id: "cabin3d", name: "Nordic cabin (3D)", pack: fjordCabin, three: "cabin" },
-  { id: "japanese", name: "Japanese room (3D)", pack: warmMinimal, three: "japanese" },
-  { id: "mediterranean", name: "Mediterranean (3D)", pack: warmMinimal, three: "mediterranean" },
-  { id: "lofi-desk", name: "Lofi desk (3D)", pack: lofiStudy, three: "lofi-desk" },
-  { id: "lofi-bedroom", name: "Cozy bedroom (3D)", pack: lofiStudy, three: "lofi-bedroom" },
-  { id: "lofi", name: "Lofi study", pack: lofiStudy },
-  { id: "minimal", name: "Warm minimal", pack: warmMinimal },
-  { id: "attic", name: "Attic", pack: atticRoom },
-  { id: "cabin", name: "Log cabin", pack: fjordCabin },
+  { id: "painted-bedroom", name: "Cozy bedroom (painted)", pack: paintedBedroom, view: "painted-valley" },
+  { id: "listening", name: "Listening room (3D)", pack: paintedStudy, three: "listening" },
+  { id: "cabin3d", name: "Nordic cabin (3D)", pack: paintedBedroom, three: "cabin" },
+  { id: "japanese", name: "Japanese room (3D)", pack: paintedStudy, three: "japanese" },
+  { id: "mediterranean", name: "Mediterranean (3D)", pack: paintedStudy, three: "mediterranean" },
 ];
 export type WeatherStatus = "loading" | "live" | "stale" | "offline" | "preset";
 export type WindowPrefs = { city: string; sound: boolean; volume: number; preset: number | null; view: string; room: string; custom?: City | undefined };

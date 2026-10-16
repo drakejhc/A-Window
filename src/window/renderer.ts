@@ -318,7 +318,8 @@ export class Renderer {
     this.drawStars(env);
     this.drawAurora(env);
     this.drawCelestial(env);
-    this.drawClouds(env);
+    if (this.view.painted) this.drawSoftClouds(env);
+    else this.drawClouds(env);
     this.view.drawLandscape(ctx, env, g, this.viewData, this.P);
     this.drawFog(env);
     this.drawDrifters(env);
@@ -543,8 +544,29 @@ export class Renderer {
     }
   }
 
-  private drawClouds(env: FrameEnv) {
-    const { ctx, geom: g } = this,
+  /** Clouds for a painted view: drawn at a quarter of the size and scaled up, so they come out soft, like
+   *  brushed shapes rather than cut-out puffs. */
+  private cloudBuf: HTMLCanvasElement | null = null;
+  private drawSoftClouds(env: FrameEnv) {
+    const { ctx, geom: g } = this, k = 0.25;
+    const w = Math.max(1, Math.ceil(g.w * k)), h = Math.max(1, Math.ceil(g.h * k));
+    const buf = (this.cloudBuf ??= document.createElement("canvas"));
+    if (buf.width !== w || buf.height !== h) Object.assign(buf, { width: w, height: h });
+    const bx = buf.getContext("2d")!;
+    bx.setTransform(1, 0, 0, 1, 0, 0);
+    bx.clearRect(0, 0, w, h);
+    bx.setTransform(k, 0, 0, k, -g.x * k, -g.y * k);
+    this.drawClouds(env, bx);
+    ctx.save();
+    ctx.globalAlpha = 0.85;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(buf, g.x, g.y, g.w, g.h);
+    ctx.restore();
+  }
+
+  private drawClouds(env: FrameEnv, target?: CanvasRenderingContext2D) {
+    const { geom: g } = this,
+      ctx = target ?? this.ctx,
       dt = env.dt,
       p = this.par(0.1);
     const lit = mixRGB([44, 50, 72], [240, 242, 246], env.dayness);
@@ -679,14 +701,20 @@ export class Renderer {
     }
   }
 
+  /** The window's panes: the room's own, if it paints a different window from the usual cross. */
+  private panes() {
+    return (this.roomData as { panes?: Geom["panes"] } | null)?.panes ?? this.geom.panes;
+  }
+
   /** Snow banking up against the bottom of each pane, deeper in the corners. */
   private drawSettledSnow(env: FrameEnv) {
     if (env.snowCover < 0.02) return;
     const { ctx, geom: g } = this;
     ctx.fillStyle = rgba(this.shade([238, 242, 250], env, 0));
-    g.panes.forEach((pn, i) => {
+    const panes = this.panes(), lower = panes.length / 2;
+    panes.forEach((pn, i) => {
       const base = pn.y + pn.h,
-        amt = env.snowCover * (i > 1 ? 1 : 0.55) * g.h * 0.05;
+        amt = env.snowCover * (i >= lower ? 1 : 0.55) * g.h * 0.05;
       ctx.beginPath();
       ctx.moveTo(pn.x, base);
       for (let k = 0; k <= 24; k++) {
@@ -816,7 +844,7 @@ export class Renderer {
     // Frost creeping in from the corners below freezing.
     if (env.temp < 0) {
       const k = clamp(-env.temp / 12) * 0.5;
-      for (const pn of g.panes) {
+      for (const pn of this.panes()) {
         const R = Math.min(pn.w, pn.h) * 0.45;
         for (const [cx, cy] of [
           [pn.x, pn.y],
