@@ -154,6 +154,7 @@ export class Renderer {
   private flakeAcc = 0;
   private slideAcc = 0;
   private pending = 0;
+  private builtFor = "";
   private P: Painter;
 
   constructor(
@@ -173,7 +174,7 @@ export class Renderer {
     if (view === this.view && room === this.room) return;
     this.view = view;
     this.room = room;
-    this.resize();
+    this.resize(true);
   }
 
   /** Moves the window sideways, e.g. to make room for a panel beside it. */
@@ -211,11 +212,19 @@ export class Renderer {
     );
   }
 
-  resize() {
+  /** Rebuilds for the canvas's current size. Painting a room is slow, so this does nothing when the size, pixel
+   *  ratio and alignment are what they were (switching desktops or tabbing back in reports a "resize" too), or
+   *  while the window is hidden and has no size. `force` rebuilds anyway, for a new scene. */
+  resize(force = false) {
     const rect = this.opts.size ?? this.canvas.getBoundingClientRect();
-    const W = Math.max(1, rect.width),
-      H = Math.max(1, rect.height);
-    this.dpr = Math.min(this.opts.maxDpr ?? 2, window.devicePixelRatio || 1);
+    if (rect.width < 2 || rect.height < 2) return;
+    const W = rect.width,
+      H = rect.height;
+    const dpr = Math.min(this.opts.maxDpr ?? 2, window.devicePixelRatio || 1);
+    const key = `${W}x${H}@${dpr}:${this.opts.align ?? 0.5}`;
+    if (!force && key === this.builtFor) return;
+    this.builtFor = key;
+    this.dpr = dpr;
     this.canvas.width = Math.round(W * this.dpr);
     this.canvas.height = Math.round(H * this.dpr);
     const g = (this.geom = computeGeom(W, H, this.opts));
@@ -292,6 +301,9 @@ export class Renderer {
 
   /** Advances by dt and draws, unless the frame-rate cap says to wait for the next tick. */
   tick(env: Environment, dt: number) {
+    // Not built yet (the window started hidden): try now, and wait if it still has no size.
+    if (!this.builtFor) this.resize();
+    if (!this.builtFor) return;
     this.pending += dt;
     const min = this.opts.maxFps ? 1 / this.opts.maxFps : 0;
     if (this.pending < min) return;

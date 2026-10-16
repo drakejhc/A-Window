@@ -41,6 +41,18 @@ export function Scene({ align, framed = true }: Props) {
   );
 }
 
+/** A ResizeObserver that waits until resizing stops (a fullscreen animation, dragging the window edge) and
+ *  then calls `fn` once. Until then the canvas keeps its last picture, stretched, rather than repainting at every
+ *  step. */
+function settled(fn: () => void) {
+  let t = 0;
+  const ro = new ResizeObserver(() => {
+    window.clearTimeout(t);
+    t = window.setTimeout(fn, 180);
+  });
+  return { observe: (el: Element) => ro.observe(el), disconnect: () => (window.clearTimeout(t), ro.disconnect()) };
+}
+
 const label = (city: string) => `An illustrated window in ${city}, showing the weather and time of day there`;
 
 function usePointer(target: React.RefObject<{ setPointer(x: number, y: number): void } | null>) {
@@ -64,7 +76,7 @@ function Scene2D({ align, framed, view, room, onReady }: { align: number; framed
     const r = new Renderer(canvas, view, room, framed ? { framed: true, align, parallax: 1 } : { framed: false, parallax: 0.3, maxFps: 30 });
     renderer.current = r;
     const detach = engine.attach(r);
-    const resize = new ResizeObserver(() => r.resize());
+    const resize = settled(() => r.resize());
     resize.observe(canvas);
     return () => {
       detach();
@@ -107,7 +119,7 @@ function Scene3D({ design, view: viewPack, align, onReady, onFail }: { design: s
         room.current = r;
         const detach = engine.attach(r);
         onReady();
-        const resize = new ResizeObserver(() => r.resize());
+        const resize = settled(() => r.resize());
         resize.observe(layers.room);
         cleanup = () => {
           detach();

@@ -79,6 +79,7 @@ export class Room3D {
   private t = 0;
   private sinceRender = 99;
   private sinceGlow = 99;
+  private builtFor = "";
   private dirty = true;
   private lastSig: number[] = [];
   private dist = 4;
@@ -130,6 +131,11 @@ export class Room3D {
     }
 
     this.room = design.build(this.scene);
+    // Windows can drop the GPU context when switching desktops or waking from sleep; redraw when it returns.
+    layers.room.addEventListener("webglcontextrestored", () => {
+      this.dirty = true;
+      this.renderer.shadowMap.needsUpdate = true;
+    });
 
     // Multisampled, so edges stay smooth through the ambient occlusion.
     this.composer = new EffectComposer(r, new THREE.WebGLRenderTarget(1, 1, { samples: 4, type: THREE.HalfFloatType }));
@@ -156,10 +162,15 @@ export class Room3D {
     this.pointer.ty = ny;
   }
 
-  resize() {
+  /** Re-fits the room to the canvas, but only when its size, pixel ratio or alignment really changed. */
+  resize(force = false) {
     const rect = this.layers.room.getBoundingClientRect();
-    const W = Math.max(1, rect.width), H = Math.max(1, rect.height);
+    if (rect.width < 2 || rect.height < 2) return;
+    const W = rect.width, H = rect.height;
     const dpr = Math.min(this.opts.maxDpr ?? 1.25, window.devicePixelRatio || 1);
+    const key = `${W}x${H}@${dpr}:${this.opts.align}`;
+    if (!force && key === this.builtFor) return;
+    this.builtFor = key;
     this.size = { W, H };
     this.renderer.setPixelRatio(dpr);
     this.renderer.setSize(W, H, false);
@@ -202,6 +213,8 @@ export class Room3D {
   }
 
   tick(env: Environment, dt: number) {
+    if (!this.builtFor) this.resize();
+    if (!this.builtFor) return;
     this.t += dt;
     this.sinceRender += dt;
     this.sinceGlow += dt;
