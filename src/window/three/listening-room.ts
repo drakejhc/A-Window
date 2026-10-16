@@ -2,6 +2,7 @@
  *  record player, a sleeve on a stand, a lamp, a snake plant and a print on the wall. */
 import * as THREE from "three";
 
+import type { Environment } from "../environment";
 import { clamp, mixRGB } from "../util";
 import { AlbumArt, blinds, books, box, lathe, mat, mug, rounded, shell, sideWindows, snakePlant, solid, turntable, windowFrame } from "./kit";
 import { rgb, type Design } from "./room3d";
@@ -11,13 +12,14 @@ const opening = { w: 1.7, h: 1.45, sill: 1.0, depth: 0.26 };
 
 export const listeningRoom: Design = {
   id: "listening",
+  name: "Listening room",
   opening,
   eye: 1.4,
   span: { w: 3.9, h: 2.5 },
 
   build(scene) {
-    const wall = mat([255, 255, 255], { map: toTexture(plaster([236, 224, 204], 3), [2, 2]), roughness: 0.95 });
-    const floor = mat([255, 255, 255], { map: toTexture(wood([150, 104, 66], 8, 8), [3, 6]), roughness: 0.55 });
+    const wall = mat([255, 255, 255], { map: toTexture(plaster([236, 224, 204], 3), [1, 1]), roughness: 0.95 });
+    const floor = mat([255, 255, 255], { map: toTexture(wood([150, 104, 66], 8, 8), [1, 1]), roughness: 0.55 });
     const ceiling = mat([240, 234, 224], { roughness: 1 });
     shell(scene, opening, { w: 5.6, h: 2.9, d: 10 }, wall, floor, ceiling);
     sideWindows(scene, 2.7, { z0: 0.5, z1: 2.3, y0: 0.9, y1: 2.6 }, 2.9, 22);
@@ -117,16 +119,19 @@ export const listeningRoom: Design = {
       stem.rotation.z = (i - 1) * 0.25;
     }
 
+    const lampOn = (env: Environment) => clamp(env.lamp * 1.15);
     return {
       update(env) {
-        deck.update(env);
-        const on = clamp(env.lamp * 1.15);
+        const on = lampOn(env);
         bulb.color.copy(rgb(mixRGB(env.lampColor, [255, 214, 160], 0.4)));
         bulb.intensity = 1.1 * on;
         bulb.visible = on > 0.01;
         shade.emissive.copy(rgb(env.lampColor));
         shade.emissiveIntensity = 0.45 * on;
+        return deck.update(env);
       },
+      signature: (env) => [lampOn(env), ...env.lampColor.map((v) => v / 255)],
+      glows: [{ at: new THREE.Vector3(lx, top + 0.43, lz), radius: 0.6, color: (env) => env.lampColor, level: (env) => lampOn(env) * 0.8 }],
     };
   },
 };

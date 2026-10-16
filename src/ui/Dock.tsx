@@ -103,7 +103,7 @@ export function Dock({ sheetOpen, onToggleSheet, focusing, onFocus, onSettings }
           Room
         </label>
         <select id="room" className="ctl" value={snap.prefs.room} onChange={(e) => engine.setScene({ room: e.target.value })}>
-          <option value="auto">Auto room</option>
+          <option value="auto">Auto (suits the city)</option>
           {ROOMS.map((r) => (
             <option key={r.id} value={r.id}>
               {r.name}

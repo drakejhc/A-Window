@@ -39,8 +39,10 @@ npm test
 - **Replan** (`R`) moves tasks that fell behind into the free time left today.
 - **Focus** (`F`) works on the block happening now, or the next one, or a free session when the day is clear.
   Focused minutes are recorded on the block. `Space` pauses and `Esc` exits.
-- **The window**: search for any city and choose a room in the bottom bar (Listening room (3D), Lofi study, Warm minimal,
-  Attic, Log cabin),
+- **The window**: search for any city and choose a room in the bottom bar. The 3D rooms are the Listening room, a Nordic
+  cabin, a Japanese room and a Mediterranean room; *Auto* picks one to suit the city (the cabin in the far north and
+  south, the Japanese room in East Asia, the Mediterranean room where it's warm, the Listening room elsewhere). The
+  drawn rooms (Lofi study, Warm minimal, Attic, Log cabin) are lighter still,
   and turn sound on. *Adjust* picks the view outside (rooftops or a fjord), the weather, a preview of another time of
   day, and the volume. Any room goes with any view.
 - **Repeating events**: an event can repeat every day, every weekday or every week. Delete one day or the whole series.
@@ -79,11 +81,13 @@ between, so any room works with any view. See `src/window/types.ts` for the inte
 `packs/warm-minimal.ts` for rooms, and `packs/props.ts` for the shared cat, mug, plant, books and fairy lights. Add a
 pack to `VIEWS` or `ROOMS` in `engine.ts` and it appears in the pickers.
 
-**3D rooms** (`src/window/three/`) are rendered with three.js and loaded only when chosen. The view outside is the same
-2D renderer drawing to a canvas that becomes a texture behind the glass. The room is lit by the real sun (with its
+**3D rooms** (`src/window/three/`) are rendered with three.js and loaded only when chosen. Three layers keep them cheap:
+the same 2D renderer draws the view outside on its own canvas behind the glass; the 3D room renders with a transparent
+hole for the window, and only when its light, the pointer or a spinning record changes (an idle room doesn't redraw
+at all); and a 2D layer on top draws the flicker of lamps, candles and fire. The room is lit by the real sun (with its
 shadows through the window and blinds), the sky's colour and the lamp, with ambient occlusion and a little bloom.
-Low sun also comes in through unseen side windows, so blind stripes slant across the wall as the day goes on. A design
-(`listening-room.ts`) builds its furniture from the parts in `kit.ts` and textures painted in `textures.ts`, so there
+Low sun also comes in through unseen side windows, so blind stripes slant across the wall as the day goes on. Each design
+(`listening-room.ts`, `nordic-cabin.ts`, `japanese-room.ts`, `mediterranean.ts`) builds its furniture from the parts in `kit.ts` and textures painted in `textures.ts`, so there
 are no image files. Without WebGL, a 3D room falls back to its 2D stand-in.
 
 Weather comes from [Open-Meteo](https://open-meteo.com) (free, no key) and refreshes every 15 minutes.

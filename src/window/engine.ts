@@ -22,7 +22,10 @@ export const VIEWS: { id: string; name: string; pack: AnyView }[] = [
 ];
 /** `three` names a rendered 3D room (see `three/`); `pack` is the 2D room shown where WebGL isn't available. */
 export const ROOMS: { id: string; name: string; pack: AnyRoom; three?: string }[] = [
-  { id: "listening", name: "Listening room (3D)", pack: warmMinimal, three: "listening" },
+  { id: "listening", name: "Listening room (3D)", pack: lofiStudy, three: "listening" },
+  { id: "cabin3d", name: "Nordic cabin (3D)", pack: fjordCabin, three: "cabin" },
+  { id: "japanese", name: "Japanese room (3D)", pack: warmMinimal, three: "japanese" },
+  { id: "mediterranean", name: "Mediterranean (3D)", pack: warmMinimal, three: "mediterranean" },
   { id: "lofi", name: "Lofi study", pack: lofiStudy },
   { id: "minimal", name: "Warm minimal", pack: warmMinimal },
   { id: "attic", name: "Attic", pack: atticRoom },
@@ -77,16 +80,28 @@ function loadPrefs(): WindowPrefs {
   }
 }
 
-/** Auto looks out over a fjord from a log cabin in the far north and south, and over rooftops from a lofi study
- *  everywhere else. */
+const EAST_ASIA = /^Asia\/(Tokyo|Seoul|Pyongyang|Shanghai|Taipei|Hong_Kong|Macau)$/;
+
+/** The room Auto picks for a city: a Nordic cabin in the far north and south, a Japanese room in East Asia, a
+ *  Mediterranean room where it's warm and sunny, and the Listening room everywhere else. */
+export function autoRoom(city: City) {
+  const lat = Math.abs(city.lat);
+  if (lat >= 55) return "cabin3d";
+  if (EAST_ASIA.test(city.tz)) return "japanese";
+  if (lat < 42) return "mediterranean";
+  return "listening";
+}
+
+/** Auto looks out over a fjord in the far north and south and over rooftops elsewhere, from the room `autoRoom`
+ *  picks. */
 export function sceneFor(prefs: Pick<WindowPrefs, "view" | "room">, city: City) {
   const north = Math.abs(city.lat) >= 58;
   const view = VIEWS.find((v) => v.id === prefs.view)?.pack ?? (north ? fjordCabin : atticRoom);
-  const entry = ROOMS.find((r) => r.id === prefs.room);
-  const room = entry?.pack ?? (north ? fjordCabin : lofiStudy);
+  const entry = ROOMS.find((r) => r.id === prefs.room) ?? ROOMS.find((r) => r.id === autoRoom(city))!;
+  const room = entry.pack;
   // Weather sounds come from outside; the fire and its crackle belong to the room.
   const ambience: AmbienceWeights = { ...view.ambience, fire: room.ambience.fire };
-  return { view, room, room3d: entry?.three ?? null, ambience };
+  return { view, room, room3d: entry.three ?? null, ambience };
 }
 
 export class WindowEngine {

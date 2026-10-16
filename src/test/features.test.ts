@@ -77,3 +77,17 @@ describe("backups", () => {
     expect(readBackup("not json")).toMatch(/couldn’t be read/);
   });
 });
+
+describe("auto room", () => {
+  it("suits the room to the city", async () => {
+    const { autoRoom, sceneFor } = await import("@/window/engine");
+    const { CITIES } = await import("@/window/cities");
+    const at = (id: string) => autoRoom(CITIES.find((c) => c.id === id)!);
+    expect(at("tromso")).toBe("cabin3d");
+    expect(at("kyoto")).toBe("japanese");
+    expect(at("lisbon")).toBe("mediterranean");
+    expect(at("vancouver")).toBe("listening");
+    expect(sceneFor({ view: "auto", room: "auto" }, CITIES.find((c) => c.id === "kyoto")!).room3d).toBe("japanese");
+    expect(sceneFor({ view: "auto", room: "lofi" }, CITIES.find((c) => c.id === "kyoto")!).room3d).toBeNull();
+  });
+});

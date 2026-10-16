@@ -28,13 +28,31 @@ export const rounded = (parent: THREE.Object3D, w: number, h: number, d: number,
 export const lathe = (parent: THREE.Object3D, profile: [number, number][], m: THREE.Material, x: number, y: number, z: number, seg = 48) =>
   solid(parent, new THREE.LatheGeometry(profile.map(([r, h]) => new THREE.Vector2(r, h)), seg), m, x, y, z);
 
+/** Sets a mesh's UVs from its world position, `scale` metres per texture repeat, so a texture keeps the same size
+ *  on every wall piece. Each face takes the two axes it lies along. */
+export function worldUV(mesh: THREE.Mesh, scale: number) {
+  mesh.updateMatrixWorld(true);
+  const geo = mesh.geometry, pos = geo.attributes.position!, nor = geo.attributes.normal!, uv = geo.attributes.uv!;
+  const p = new THREE.Vector3(), n = new THREE.Vector3(), nm = new THREE.Matrix3().getNormalMatrix(mesh.matrixWorld);
+  for (let i = 0; i < pos.count; i++) {
+    p.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld);
+    n.fromBufferAttribute(nor, i).applyMatrix3(nm);
+    const ax = Math.abs(n.x), ay = Math.abs(n.y), az = Math.abs(n.z);
+    if (az >= ax && az >= ay) uv.setXY(i, p.x / scale, p.y / scale);
+    else if (ax >= ay) uv.setXY(i, p.z / scale, p.y / scale);
+    else uv.setXY(i, p.x / scale, p.z / scale);
+  }
+  uv.needsUpdate = true;
+  return mesh;
+}
+
 /** The shell of the room: a back wall with the window opening cut out, side walls, floor and ceiling. */
-export function shell(scene: THREE.Scene, o: Opening, size: { w: number; h: number; d: number }, wall: THREE.Material, floor: THREE.Material, ceiling: THREE.Material) {
+export function shell(scene: THREE.Scene, o: Opening, size: { w: number; h: number; d: number }, wall: THREE.Material, floor: THREE.Material, ceiling: THREE.Material, scale = { wall: 2, floor: 2 }) {
   const { w, h, d } = size, T = o.depth, z = -T / 2, half = w / 2, x0 = -o.w / 2, x1 = o.w / 2, top = o.sill + o.h;
-  box(scene, half + x0, h, T, wall, (-half + x0) / 2, h / 2, z);
-  box(scene, half - x1, h, T, wall, (half + x1) / 2, h / 2, z);
-  box(scene, o.w, o.sill, T, wall, 0, o.sill / 2, z);
-  box(scene, o.w, h - top, T, wall, 0, (h + top) / 2, z);
+  worldUV(box(scene, half + x0, h, T, wall, (-half + x0) / 2, h / 2, z), scale.wall);
+  worldUV(box(scene, half - x1, h, T, wall, (half + x1) / 2, h / 2, z), scale.wall);
+  worldUV(box(scene, o.w, o.sill, T, wall, 0, o.sill / 2, z), scale.wall);
+  worldUV(box(scene, o.w, h - top, T, wall, 0, (h + top) / 2, z), scale.wall);
   const side = new THREE.PlaneGeometry(d, h);
   // The side walls are never in frame and don't block light: sunlight from the side comes through `sideWindow`.
   const l = solid(scene, side, wall, -half, h / 2, d / 2);
@@ -44,19 +62,47 @@ export function shell(scene: THREE.Scene, o: Opening, size: { w: number; h: numb
   l.castShadow = r.castShadow = false;
   const f = solid(scene, new THREE.PlaneGeometry(w, d), floor, 0, 0, d / 2);
   f.rotation.x = -Math.PI / 2;
+  worldUV(f, scale.floor);
   const c = solid(scene, new THREE.PlaneGeometry(w, d), ceiling, 0, h, d / 2);
   c.rotation.x = Math.PI / 2;
 }
 
-/** A window frame with a cross of glazing bars set into the opening, `inset` from the room side. */
-export function windowFrame(scene: THREE.Scene, o: Opening, m: THREE.Material, inset: number, bar = 0.05) {
-  const z = -inset, top = o.sill + o.h, cy = o.sill + o.h * 0.56;
+/** A window frame set into the opening, `inset` from the room side, with glazing bars making `cols` × `rows` panes
+ *  (rows split at `split`, from the top, when there are two). */
+export function windowFrame(scene: THREE.Scene, o: Opening, m: THREE.Material, inset: number, bar = 0.05, cols = 2, rows = 2, split = 0.44) {
+  const z = -inset, top = o.sill + o.h, thin = bar * 0.6;
   box(scene, bar, o.h, 0.07, m, -o.w / 2 + bar / 2, o.sill + o.h / 2, z);
   box(scene, bar, o.h, 0.07, m, o.w / 2 - bar / 2, o.sill + o.h / 2, z);
   box(scene, o.w, bar, 0.07, m, 0, top - bar / 2, z);
-  box(scene, o.w, bar, 0.07, m, 0, o.sill + bar / 2, z);
-  box(scene, bar * 0.7, o.h, 0.05, m, 0, o.sill + o.h / 2, z);
-  box(scene, o.w, bar * 0.7, 0.05, m, 0, cy, z);
+  box(scene, o.w, bar * 1.2, 0.07, m, 0, o.sill + bar * 0.6, z);
+  for (let i = 1; i < cols; i++) box(scene, i === cols / 2 ? bar * 0.8 : thin, o.h, 0.05, m, -o.w / 2 + (o.w * i) / cols, o.sill + o.h / 2, z);
+  for (let j = 1; j < rows; j++) {
+    const y = rows === 2 ? top - o.h * split : top - (o.h * j) / rows;
+    box(scene, o.w, rows === 2 ? bar * 0.8 : thin, 0.05, m, 0, y, z);
+  }
+}
+
+/** A pillar candle. Returns where its flame is, for a glow. Origin: its base. */
+export function candle(parent: THREE.Object3D, x: number, y: number, z: number, h: number, r = 0.03, wax: RGB = [240, 230, 210]) {
+  solid(parent, new THREE.CylinderGeometry(r, r, h, 32), mat(wax, { roughness: 0.55 }), x, y + h / 2, z);
+  solid(parent, new THREE.CylinderGeometry(0.002, 0.002, 0.012, 6), mat([30, 24, 20]), x, y + h + 0.006, z);
+  const flame = new THREE.Mesh(new THREE.SphereGeometry(0.008, 12, 8), new THREE.MeshBasicMaterial({ color: rgb([255, 214, 140]), transparent: true, toneMapped: false }));
+  flame.scale.set(1, 2.2, 1);
+  flame.position.set(x, y + h + 0.02, z);
+  parent.add(flame);
+  return { at: new THREE.Vector3(x, y + h + 0.02, z), flame };
+}
+
+/** A soft cushion: a rounded box with its corners pulled in. Origin: its centre. */
+export function cushion(parent: THREE.Object3D, w: number, h: number, d: number, m: THREE.Material, x: number, y: number, z: number) {
+  const geo = new RoundedBoxGeometry(w, h, d, 6, Math.min(w, h, d) * 0.45);
+  const pos = geo.attributes.position!;
+  for (let i = 0; i < pos.count; i++) {
+    const px = pos.getX(i) / (w / 2), py = pos.getY(i) / (h / 2);
+    pos.setZ(i, pos.getZ(i) * (1 - 0.35 * px * px * py * py));
+  }
+  geo.computeVertexNormals();
+  return solid(parent, geo, m, x, y, z);
 }
 
 /** Venetian blinds, part-lowered, whose slats throw striped shadows when the sun comes in. */
@@ -141,7 +187,7 @@ export class AlbumArt {
 }
 
 /** A record player. The record spins and the arm swings over while music plays. Origin: centre of its base. */
-export function turntable(parent: THREE.Object3D, art: AlbumArt, plinth: THREE.Material) {
+export function turntable(parent: THREE.Object3D, art: AlbumArt, plinth: THREE.Material, onlyWhenPlaying = false) {
   const g = new THREE.Group();
   parent.add(g);
   const black = mat([16, 16, 18], { roughness: 0.5 });
@@ -174,14 +220,21 @@ export function turntable(parent: THREE.Object3D, art: AlbumArt, plinth: THREE.M
   // Controls.
   solid(g, new THREE.CylinderGeometry(0.014, 0.014, 0.012, 24), metal, -0.18, top + 0.006, 0.14);
   solid(g, new THREE.CylinderGeometry(0.01, 0.01, 0.01, 24), black, -0.14, top + 0.005, 0.15);
+  let last = "";
   return {
     group: g,
+    /** Returns true when anything moved since the last call. */
     update(env: Environment) {
       const m = env.music;
       art.update(m.art);
       record.rotation.y = -m.spin;
       pivot.rotation.y = -0.5 * m.arm;
       pivot.position.y = top + 0.004 * Math.sin(Math.PI * m.arm);
+      if (onlyWhenPlaying) g.visible = m.on > 0.3;
+      const key = `${m.spin.toFixed(3)} ${m.arm.toFixed(3)} ${art.tex.id} ${g.visible}`;
+      const moved = key !== last;
+      last = key;
+      return moved;
     },
   };
 }

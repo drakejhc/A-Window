@@ -58,14 +58,16 @@ function Scene2D({ align, framed }: { align: number; framed: boolean }) {
 }
 
 function Scene3D({ design, align, onFail }: { design: string; align: number; onFail: () => void }) {
-  const ref = useRef<HTMLCanvasElement>(null);
+  const view = useRef<HTMLCanvasElement>(null);
+  const roomCanvas = useRef<HTMLCanvasElement>(null);
+  const glow = useRef<HTMLCanvasElement>(null);
   const room = useRef<Room3D | null>(null);
   const { snap } = useWindow();
   usePointer(room);
 
   useEffect(() => {
-    const canvas = ref.current;
-    if (!canvas) return;
+    if (!view.current || !roomCanvas.current || !glow.current) return;
+    const layers = { view: view.current, room: roomCanvas.current, glow: glow.current };
     const engine = getWindowEngine();
     let live = true;
     let cleanup = () => {};
@@ -74,11 +76,12 @@ function Scene3D({ design, align, onFail }: { design: string; align: number; onF
         const d = DESIGNS[design];
         if (!live) return;
         if (!d) throw new Error(`No 3D room "${design}"`);
-        const r = new Room3D(canvas, d, engine.getSnapshot().view, { align });
+        const r = new Room3D(layers, d, engine.getSnapshot().view, { align });
         room.current = r;
+        (window as { __room3d?: Room3D }).__room3d = r;
         const detach = engine.attach(r);
         const resize = new ResizeObserver(() => r.resize());
-        resize.observe(canvas);
+        resize.observe(layers.room);
         cleanup = () => {
           detach();
           resize.disconnect();
@@ -101,5 +104,11 @@ function Scene3D({ design, align, onFail }: { design: string; align: number; onF
   useEffect(() => room.current?.setView(snap.view), [snap.view]);
   useEffect(() => room.current?.setAlign(align), [align]);
 
-  return <canvas ref={ref} className="scene" role="img" aria-label={label(snap.city.name)} />;
+  return (
+    <div className="scene scene3d" role="img" aria-label={label(snap.city.name)}>
+      <canvas ref={view} className="scene-view" />
+      <canvas ref={roomCanvas} className="scene-layer" />
+      <canvas ref={glow} className="scene-layer scene-glow" />
+    </div>
+  );
 }
