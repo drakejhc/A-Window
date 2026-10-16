@@ -40,8 +40,9 @@ npm test
 - **Focus** (`F`) works on the block happening now, or the next one, or a free session when the day is clear.
   Focused minutes are recorded on the block. `Space` pauses and `Esc` exits.
 - **The window**: search for any city and choose a room in the bottom bar. The 3D rooms are the Listening room, a Nordic
-  cabin, a Japanese room and a Mediterranean room, plus two illustrated ones (a Lofi desk and a Cozy bedroom) that
-  look drawn but keep real perspective and light; *Auto* picks one to suit the city (the cabin in the far north and
+  cabin, a Japanese room and a Mediterranean room, plus a Lofi desk and a Cozy bedroom with toon shading. The *Midnight study (painted)*
+  is a 2D painting instead: brushwork, hand-drawn edges and grain, painted once in night, day and lamplight and
+  blended live, looking out on a *Painted city*; *Auto* picks one to suit the city (the cabin in the far north and
   south, the Japanese room in East Asia, the Mediterranean room where it's warm, the Listening room elsewhere). The
   drawn rooms (Lofi study, Warm minimal, Attic, Log cabin) are lighter still,
   and turn sound on. *Adjust* picks the view outside (rooftops, a fjord or a city skyline), the weather, a preview of another time of

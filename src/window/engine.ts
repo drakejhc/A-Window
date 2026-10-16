@@ -10,6 +10,8 @@ import { atticRoom } from "./packs/attic-room";
 import { fjordCabin } from "./packs/fjord-cabin";
 import { cityView } from "./packs/city";
 import { lofiStudy } from "./packs/lofi-study";
+import { paintedCity } from "./packs/painted-city";
+import { paintedStudy } from "./packs/painted-study";
 import { warmMinimal } from "./packs/warm-minimal";
 import type { AmbienceWeights, AnyRoom, AnyView } from "./types";
 import { describe, fetchCurrent, type Weather } from "./weather";
@@ -21,15 +23,18 @@ export const VIEWS: { id: string; name: string; pack: AnyView }[] = [
   { id: "rooftops", name: "Rooftops", pack: atticRoom },
   { id: "fjord", name: "Fjord", pack: fjordCabin },
   { id: "city", name: "City skyline", pack: cityView },
+  { id: "painted-city", name: "Painted city", pack: paintedCity },
 ];
-/** `three` names a rendered 3D room (see `three/`); `pack` is the 2D room shown where WebGL isn't available. */
-export const ROOMS: { id: string; name: string; pack: AnyRoom; three?: string }[] = [
+/** `three` names a rendered 3D room (see `three/`); `pack` is the 2D room shown where WebGL isn't available.
+ *  `view` is the view Auto shows from this room. */
+export const ROOMS: { id: string; name: string; pack: AnyRoom; three?: string; view?: string }[] = [
+  { id: "painted", name: "Midnight study (painted)", pack: paintedStudy, view: "painted-city" },
   { id: "listening", name: "Listening room (3D)", pack: lofiStudy, three: "listening" },
   { id: "cabin3d", name: "Nordic cabin (3D)", pack: fjordCabin, three: "cabin" },
   { id: "japanese", name: "Japanese room (3D)", pack: warmMinimal, three: "japanese" },
   { id: "mediterranean", name: "Mediterranean (3D)", pack: warmMinimal, three: "mediterranean" },
-  { id: "lofi-desk", name: "Lofi desk (illustrated)", pack: lofiStudy, three: "lofi-desk" },
-  { id: "lofi-bedroom", name: "Cozy bedroom (illustrated)", pack: lofiStudy, three: "lofi-bedroom" },
+  { id: "lofi-desk", name: "Lofi desk (3D)", pack: lofiStudy, three: "lofi-desk" },
+  { id: "lofi-bedroom", name: "Cozy bedroom (3D)", pack: lofiStudy, three: "lofi-bedroom" },
   { id: "lofi", name: "Lofi study", pack: lofiStudy },
   { id: "minimal", name: "Warm minimal", pack: warmMinimal },
   { id: "attic", name: "Attic", pack: atticRoom },
@@ -100,8 +105,9 @@ export function autoRoom(city: City) {
  *  picks. */
 export function sceneFor(prefs: Pick<WindowPrefs, "view" | "room">, city: City) {
   const north = Math.abs(city.lat) >= 58;
-  const view = VIEWS.find((v) => v.id === prefs.view)?.pack ?? (north ? fjordCabin : atticRoom);
   const entry = ROOMS.find((r) => r.id === prefs.room) ?? ROOMS.find((r) => r.id === autoRoom(city))!;
+  const auto = VIEWS.find((v) => v.id === entry.view)?.pack ?? (north ? fjordCabin : atticRoom);
+  const view = VIEWS.find((v) => v.id === prefs.view)?.pack ?? auto;
   const room = entry.pack;
   // Weather sounds come from outside; the fire and its crackle belong to the room.
   const ambience: AmbienceWeights = { ...view.ambience, fire: room.ambience.fire };
