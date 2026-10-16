@@ -10,13 +10,8 @@ export function useWindow() {
   return { engine, snap };
 }
 
-const SOURCE = {
-  live: "Live weather",
-  stale: "Live weather · reconnecting",
-  loading: "Fetching weather…",
-  offline: "Live weather can’t be reached here",
-  preset: "Chosen weather",
-} as const;
+// Only say where the weather comes from when it's real or chosen; otherwise say nothing about it.
+const SOURCE = { live: "Live weather", stale: "Live weather", loading: "", offline: "", preset: "Chosen weather" } as const;
 
 /** The window city's clock, conditions and next sun event, refreshed every 15 seconds. */
 export function useWindowSummary() {
@@ -29,9 +24,10 @@ export function useWindowSummary() {
   return {
     city: snap.city.name,
     clock: formatClock(engine.now(), snap.city.tz),
-    conditions: `${snap.weather.label} · ${Math.round(snap.weather.temp)}°C`,
+    /** Null when there's no real or chosen weather to report. */
+    weather: snap.status === "loading" || snap.status === "offline" ? null : { label: snap.weather.label, tempC: snap.weather.temp },
     sun: engine.sunLabel(),
-    source: SOURCE[snap.status] + (snap.shift ? " · time adjusted" : ""),
+    source: [SOURCE[snap.status], snap.shift ? "Time adjusted" : ""].filter(Boolean).join(" · "),
     status: snap.status,
   };
 }

@@ -4,6 +4,9 @@ import { localParts, moonPosition, seasonFor, sunPosition, type Season } from ".
 import type { City } from "./cities";
 import { clamp, ease, lerp, mapRGB, mixRGB, smooth, type RGB } from "./util";
 import type { Weather } from "./weather";
+import type { MusicState } from "../music";
+
+const LAMP: RGB = [255, 176, 96];
 
 const SKY: { alt: number; top: RGB; bottom: RGB }[] = [
   { alt: -18, top: [7, 9, 20], bottom: [16, 19, 36] },
@@ -98,6 +101,10 @@ export class Environment implements Eased {
   sky: { top: RGB; bottom: RGB } = { top: [70, 126, 198], bottom: [178, 206, 230] };
   ambient: RGB = [1, 1, 1];
   onThunder: ((distance: number) => void) | null = null;
+  /** Music in the room: how present the record player is (eased 0..1), the platter's angle, and the album art. */
+  music = { on: 0, playing: false, spin: 0, arm: 0, art: null as CanvasImageSource | null };
+  /** The lamp's colour, tinted by the album art while music plays. */
+  lampColor: RGB = LAMP;
   private astroAt = 0;
   private fresh = true;
   private flashQueue: { at: number; v: number }[] = [];
@@ -165,6 +172,18 @@ export class Environment implements Eased {
 
     this.updateLightning(dt);
     this.updateLight();
+  }
+
+  updateMusic(m: MusicState, dt: number) {
+    const mu = this.music, playing = m.np?.state === "playing";
+    mu.on = ease(mu.on, m.np ? 1 : 0, dt, 0.6);
+    mu.arm = ease(mu.arm, playing ? 1 : 0, dt, 0.5);
+    mu.playing = playing;
+    // 33⅓ rpm, spinning up and down rather than starting instantly.
+    mu.spin = (mu.spin + dt * Math.PI * 2 * (33.33 / 60) * mu.arm) % (Math.PI * 2);
+    mu.art = m.art;
+    const tint = m.tint ? mixRGB(LAMP, mixRGB(m.tint, [255, 255, 255], 0.25), 0.45 * mu.arm) : LAMP;
+    this.lampColor = mixRGB(this.lampColor, tint, 1 - Math.exp(-dt / 1.5));
   }
 
   private updateLightning(dt: number) {

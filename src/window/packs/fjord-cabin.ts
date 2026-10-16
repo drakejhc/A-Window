@@ -15,6 +15,7 @@ export type CabinData = {
   candles: { x: number; h: number; p: number }[];
   books: { x: number };
   lamp: { x: number; y: number };
+  turntable: { x: number; y: number };
 };
 
 const SNOW: RGB = [236, 240, 248];
@@ -145,6 +146,7 @@ export const fjordCabin: WindowPack<CabinData> = {
       candles: [{ x: g.x + g.w * 0.76, h: 46 * s, p: rng() * 6 }, { x: g.x + g.w * 0.83, h: 32 * s, p: rng() * 6 }],
       books: { x: g.x + g.w * 0.18 },
       lamp: { x: g.x + g.w * 0.79, y: sillY - 60 * s },
+      turntable: { x: g.x + g.w * 0.5, y: sillY + g.frame * 1.2 * 0.32 },
     };
   },
 
@@ -173,8 +175,8 @@ export const fjordCabin: WindowPack<CabinData> = {
     ctx.fillRect(0, 0, W, H);
     if (env.lamp > 0.01) {
       grd = ctx.createRadialGradient(d.lamp.x, d.lamp.y, 0, d.lamp.x, d.lamp.y, Math.max(W, H) * 0.5);
-      grd.addColorStop(0, rgba([255, 170, 90], 0.32 * env.lamp));
-      grd.addColorStop(1, rgba([255, 150, 80], 0));
+      grd.addColorStop(0, rgba(env.lampColor, 0.32 * env.lamp));
+      grd.addColorStop(1, rgba(env.lampColor, 0));
       ctx.fillStyle = grd;
       ctx.fillRect(0, 0, W, H);
     }

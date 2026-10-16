@@ -24,7 +24,7 @@ type Props = {
   todayKey: string;
   now: number;
   currentId: string | undefined;
-  onOpen: (kind: Kind, id: string) => void;
+  onOpen: (kind: Kind, id: string, date: string) => void;
   onToggle: (id: string) => void;
   onPlace: (kind: Kind, id: string, date: string, start: number) => void;
   onBlocked: () => void;
@@ -119,8 +119,8 @@ export function Timeline({ data, days, todayKey, now, currentId, onOpen, onToggl
                       dragging = null;
                       setPreview(null);
                     }}
-                    onClick={() => onOpen(b.kind, b.id)}
-                    onKeyDown={(e) => e.key === "Enter" && onOpen(b.kind, b.id)}
+                    onClick={() => onOpen(b.kind, b.id, day)}
+                    onKeyDown={(e) => e.key === "Enter" && onOpen(b.kind, b.id, day)}
                     role="button"
                     tabIndex={0}
                     aria-label={`${b.title}, ${formatHour(b.start)} to ${formatHour(b.start + b.duration / 60)}`}
@@ -140,7 +140,10 @@ export function Timeline({ data, days, todayKey, now, currentId, onOpen, onToggl
                       </button>
                     )}
                     <div className="block-body">
-                      <p className="block-title">{b.title}</p>
+                      <p className="block-title">
+                        {b.repeat && <Icon name="replan" className="repeat-mark" aria-label="Repeats" />}
+                        {b.title}
+                      </p>
                       {roomy && (
                         <p className="block-meta">
                           {compact ? formatHour(b.start) : `${formatHour(b.start)} – ${formatHour(b.start + b.duration / 60)}`}

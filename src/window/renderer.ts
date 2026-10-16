@@ -316,7 +316,86 @@ export class Renderer {
     if (g.framed) this.drawSettledSnow(env);
     this.drawGlass(env);
     ctx.restore();
-    if (g.framed) this.pack.drawInterior(ctx, env, g, this.data, this.P);
+    if (g.framed) {
+      this.pack.drawInterior(ctx, env, g, this.data, this.P);
+      this.drawTurntable(env);
+    }
+  }
+
+  /** A record player on the sill while music plays: the album art spins on the label, and the arm lowers. */
+  private drawTurntable(env: FrameEnv) {
+    const m = env.music;
+    const spot = (this.data as { turntable?: { x: number; y: number } } | null)?.turntable;
+    if (m.on < 0.02 || !spot) return;
+    const { ctx, geom: g } = this, s = g.s;
+    const day = Math.min(1, (env.ambient[0] + env.ambient[1] + env.ambient[2]) / 3);
+    const lit = (c: RGB): RGB => [c[0] * (0.2 + 0.6 * day) + 60 * env.lamp, c[1] * (0.2 + 0.6 * day) + 36 * env.lamp, c[2] * (0.2 + 0.6 * day) + 14 * env.lamp];
+    ctx.save();
+    ctx.globalAlpha = m.on;
+    // Plinth.
+    const w = 176 * s, h = 24 * s, x = spot.x - w / 2, y = spot.y - h;
+    ctx.fillStyle = rgba(lit([74, 50, 36]));
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, 4 * s);
+    ctx.fill();
+    ctx.fillStyle = rgba(lit([110, 78, 56]));
+    ctx.fillRect(x + 2 * s, y, w - 4 * s, 2.5 * s);
+    // Record, seen from just above.
+    const cx = spot.x - 16 * s, cy = y - 1 * s, R = 66 * s, squash = 0.3;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(1, squash);
+    ctx.fillStyle = "#101012";
+    ctx.beginPath();
+    ctx.arc(0, 0, R, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.lineWidth = 1 / squash;
+    for (let r = R * 0.45; r < R * 0.97; r += R * 0.07) {
+      ctx.strokeStyle = `rgba(255,255,255,${0.035 + 0.02 * Math.sin(r)})`;
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.rotate(m.spin);
+    ctx.beginPath();
+    ctx.arc(0, 0, R * 0.36, 0, Math.PI * 2);
+    ctx.save();
+    ctx.clip();
+    if (m.art) ctx.drawImage(m.art, -R * 0.36, -R * 0.36, R * 0.72, R * 0.72);
+    else {
+      ctx.fillStyle = rgba(env.lampColor);
+      ctx.fill();
+    }
+    ctx.restore();
+    ctx.fillStyle = "#d8d2c4";
+    ctx.beginPath();
+    ctx.arc(0, 0, 2.2 * s, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    // A highlight that stays put while the record turns under it.
+    ctx.strokeStyle = rgba([255, 240, 220], 0.12 + 0.1 * env.lamp);
+    ctx.lineWidth = 1.5 * s;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, R * 0.8, R * 0.8 * squash, 0, Math.PI * 1.1, Math.PI * 1.45);
+    ctx.stroke();
+    // Tonearm: resting beside the record, or lowered onto it while playing.
+    const px = x + w - 14 * s, py = y - 3 * s;
+    const rest = { x: px - 6 * s, y: py + 1 * s }, play = { x: cx + R * 0.62, y: cy + 2 * s };
+    const sx = rest.x + (play.x - rest.x) * m.arm, sy = rest.y + (play.y - rest.y) * m.arm - 4 * s * (1 - m.arm);
+    ctx.strokeStyle = rgba(lit([196, 190, 180]));
+    ctx.lineWidth = 2.4 * s;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.lineTo(px - 4 * s, py - 10 * s);
+    ctx.lineTo(sx, sy - 8 * s);
+    ctx.lineTo(sx, sy);
+    ctx.stroke();
+    ctx.fillStyle = rgba(lit([60, 58, 56]));
+    ctx.beginPath();
+    ctx.arc(px, py, 4.5 * s, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 
   private drawSky(env: FrameEnv) {

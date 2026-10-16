@@ -12,7 +12,8 @@
     "test": "vitest run",
     "artifact": "vite build && node scripts/artifact.mjs",
     "desktop": "vite build && electron .",
-    "dist": "vite build && electron-builder"
+    "dist": "vite build && electron-builder",
+    "release": "vite build && electron-builder --publish always"
   },
   "dependencies": {
     "react": "19.2.8",
@@ -34,27 +35,71 @@
   "build": {
     "appId": "app.awindow.planner",
     "productName": "A Window",
+    "artifactName": "A-Window-${version}-${os}-${arch}.${ext}",
     "files": [
-      "electron/main.cjs",
+      "electron/**",
       "dist/**"
     ],
     "directories": {
       "output": "release",
       "buildResources": "build"
     },
+    "afterPack": "scripts/after-pack.cjs",
     "mac": {
       "category": "public.app-category.productivity",
-      "target": "dmg"
+      "identity": null,
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "extendInfo": {
+        "NSAppleEventsUsageDescription": "A Window shows the song playing in Spotify or Music, and lets you pause or skip it."
+      }
+    },
+    "dmg": {
+      "title": "A Window"
     },
     "win": {
-      "target": "nsis"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "A Window"
     },
     "linux": {
-      "target": "AppImage",
-      "category": "Office"
+      "target": [
+        "AppImage"
+      ],
+      "category": "Office",
+      "syncDesktopName": true
+    },
+    "publish": {
+      "provider": "github",
+      "releaseType": "draft"
     }
   },
   "trustedDependencies": [
     "electron"
-  ]
+  ],
+  "author": {
+    "name": "Drake Chen"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/drakejhc/a-window.git"
+  },
+  "desktopName": "a-window.desktop"
 }

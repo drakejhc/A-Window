@@ -6,7 +6,7 @@ import { Renderer } from "@/window/renderer";
 import { useWindow } from "./use-window";
 
 /** The live window, drawn full screen behind everything. `align` slides the window sideways (0..1). */
-export function Scene({ align }: { align: number }) {
+export function Scene({ align, framed = true }: { align: number; framed?: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const renderer = useRef<Renderer | null>(null);
   const { snap } = useWindow();
@@ -15,7 +15,7 @@ export function Scene({ align }: { align: number }) {
     const canvas = ref.current;
     if (!canvas) return;
     const engine = getWindowEngine();
-    const r = new Renderer(canvas, engine.getSnapshot().pack, { framed: true, align, parallax: 1 });
+    const r = new Renderer(canvas, engine.getSnapshot().pack, framed ? { framed: true, align, parallax: 1 } : { framed: false, parallax: 0.3, maxFps: 30 });
     renderer.current = r;
     const detach = engine.attach(r);
     const resize = new ResizeObserver(() => r.resize());

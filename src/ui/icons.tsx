@@ -24,6 +24,7 @@ const PATHS = {
   replan: "M2.5 8a5.5 5.5 0 0 1 9.6-3.6M13.5 8a5.5 5.5 0 0 1-9.6 3.6M12.5 2v2.8H9.7M3.5 14v-2.8h2.8",
   chevronDown: "M4 6l4 4 4-4",
   undo: "M5 3.5 2.5 6 5 8.5M2.5 6H10a3.5 3.5 0 0 1 0 7H6",
+  gear: "M8 10.2a2.2 2.2 0 1 0 0-4.4 2.2 2.2 0 0 0 0 4.4ZM8 1.8v1.6M8 12.6v1.6M3.6 3.6l1.1 1.1M11.3 11.3l1.1 1.1M1.8 8h1.6M12.6 8h1.6M3.6 12.4l1.1-1.1M11.3 4.7l1.1-1.1",
 } as const;
 
 export type IconName = keyof typeof PATHS;

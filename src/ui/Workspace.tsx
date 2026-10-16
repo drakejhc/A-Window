@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 
-import { addDays, blocksOn, BUCKETS, formatDuration, formatHour, fromKey, startOfWeek, toKey, type Bucket, type Kind, type Task } from "@/planner/model";
+import { addDays, blocksOn, BUCKETS, formatDuration, formatHour, fromKey, startOfWeek, toKey, weekdayNames, type Bucket, type Kind, type Task } from "@/planner/model";
 import type { PlannerState } from "@/planner/store";
 
 import { Icon } from "./icons";
@@ -28,7 +28,7 @@ type Props = {
   onBucket: (b: Bucket) => void;
   onTrayOpen: (open: boolean) => void;
   onSelect: (date: string) => void;
-  onOpen: (kind: Kind, id: string) => void;
+  onOpen: (kind: Kind, id: string, date?: string) => void;
   onToggle: (id: string) => void;
   onPlace: (kind: Kind, id: string, date: string, start: number) => void;
   onSchedule: (id: string) => void;
@@ -38,6 +38,7 @@ type Props = {
   onQuickAdd: () => void;
   onNewEvent: () => void;
   onStartFresh: () => void;
+  onSettings: () => void;
 };
 
 const addMonths = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth() + n, 1);
@@ -103,6 +104,10 @@ export function Workspace(p: Props) {
         ))}
 
         <Progress state={state} todayKey={todayKey} />
+        <button type="button" className="nav-item settings-link" onClick={p.onSettings}>
+          <Icon name="gear" />
+          Settings
+        </button>
       </aside>
 
       <main className="ws-main">
@@ -216,7 +221,7 @@ function MiniCalendar({ state, selected, todayKey, onSelect }: { state: PlannerS
         </button>
       </div>
       <div className="mini-grid">
-        {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
+        {weekdayNames("narrow").map((d, i) => (
           <span key={i} className="mini-dow">
             {d}
           </span>
@@ -274,7 +279,7 @@ function MonthView({ state, selected, todayKey, onPick }: { state: PlannerState;
   const days = Array.from({ length: 42 }, (_, i) => addDays(first, i));
   return (
     <div className="month">
-      {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
+      {weekdayNames("short").map((d) => (
         <span key={d} className="month-dow">
           {d}
         </span>

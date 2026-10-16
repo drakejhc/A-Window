@@ -3,6 +3,12 @@ export type Bucket = "Today" | "This Week" | "Later";
 export type Category = "study" | "health" | "personal" | "life";
 export type Kind = "task" | "event";
 export type Subtask = { id: string; title: string; done: boolean };
+export type Repeat = "daily" | "weekdays" | "weekly";
+export const REPEATS: { value: Repeat; label: string }[] = [
+  { value: "daily", label: "Every day" },
+  { value: "weekdays", label: "Every weekday" },
+  { value: "weekly", label: "Every week" },
+];
 
 type Shared = {
   id: string;
@@ -15,11 +21,12 @@ type Shared = {
   actual?: number | undefined;
 };
 export type Task = Shared & { bucket: Bucket; completed?: boolean | undefined; date?: string | undefined; start?: number | undefined };
-export type CalendarEvent = Shared & { date: string; start: number; meta?: string | undefined };
+/** `date` is the first occurrence; a repeating event also shows on later matching days, except those in `skip`. */
+export type CalendarEvent = Shared & { date: string; start: number; meta?: string | undefined; repeat?: Repeat | undefined; skip?: string[] | undefined };
 export type PlannerData = { tasks: Task[]; events: CalendarEvent[] };
 
 /** Anything with a place on a day: an event, or a task that has been scheduled. */
-export type Block = { kind: Kind; id: string; title: string; start: number; duration: number; category: Category; completed: boolean; meta?: string | undefined; actual?: number | undefined };
+export type Block = { kind: Kind; id: string; date: string; title: string; start: number; duration: number; category: Category; completed: boolean; meta?: string | undefined; actual?: number | undefined; repeat?: Repeat | undefined };
 
 export const BUCKETS: Bucket[] = ["Today", "This Week", "Later"];
 export const CATEGORIES: { value: Category; label: string }[] = [
@@ -34,13 +41,25 @@ export const END_HOUR = 23;
 export const SNAP = 0.25;
 
 const pad = (n: number) => n.toString().padStart(2, "0");
+
+// Display preferences, set from the app's settings before each render.
+let clock24 = false;
+let weekStartsOn: 0 | 1 = 1;
+export function setDisplayPrefs(p: { clock24: boolean; weekStart: 0 | 1 }) {
+  clock24 = p.clock24;
+  weekStartsOn = p.weekStart;
+}
+export const weekStart = () => weekStartsOn;
 export const toKey = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 export const fromKey = (key: string) => {
   const [y = 0, m = 1, d = 1] = key.split("-").map(Number);
   return new Date(y, m - 1, d);
 };
 export const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
-export const startOfWeek = (d: Date) => addDays(d, -((d.getDay() + 6) % 7));
+export const startOfWeek = (d: Date) => addDays(d, -((d.getDay() - weekStartsOn + 7) % 7));
+/** Short weekday names in display order, starting on the chosen first day of the week. */
+export const weekdayNames = (style: "narrow" | "short" = "short") =>
+  Array.from({ length: 7 }, (_, i) => new Date(2024, 0, 7 + weekStartsOn + i).toLocaleDateString(undefined, { weekday: style }));
 export const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 export const snap = (h: number) => Math.round(h / SNAP) * SNAP;
 export const nowHour = (d = new Date()) => d.getHours() + d.getMinutes() / 60;
@@ -53,6 +72,7 @@ export function formatHour(hour: number) {
     whole += 1;
     minutes = 0;
   }
+  if (clock24) return `${pad(whole % 24)}:${pad(minutes)}`;
   const display = whole % 12 === 0 ? 12 : whole % 12;
   return `${display}:${pad(minutes)} ${whole >= 12 && whole < 24 ? "PM" : "AM"}`;
 }
@@ -66,14 +86,25 @@ export const parseTime = (t: string) => {
   return h + m / 60;
 };
 
+/** Whether an event (or one of its repeats) falls on `date`. */
+export function occursOn(e: CalendarEvent, date: string) {
+  if (e.skip?.includes(date)) return false;
+  if (e.date === date) return true;
+  if (!e.repeat || date < e.date) return false;
+  const day = fromKey(date).getDay();
+  if (e.repeat === "daily") return true;
+  if (e.repeat === "weekdays") return day >= 1 && day <= 5;
+  return day === fromKey(e.date).getDay();
+}
+
 /** Everything placed on `date`, earliest first. */
 export function blocksOn(data: PlannerData, date: string): Block[] {
   const events: Block[] = data.events
-    .filter((e) => e.date === date)
-    .map((e) => ({ kind: "event", id: e.id, title: e.title, start: e.start, duration: e.duration, category: e.category, completed: false, meta: e.meta, actual: e.actual }));
+    .filter((e) => occursOn(e, date))
+    .map((e) => ({ kind: "event", id: e.id, date, title: e.title, start: e.start, duration: e.duration, category: e.category, completed: false, meta: e.meta, actual: e.actual, repeat: e.repeat }));
   const tasks: Block[] = data.tasks
     .filter((t) => t.date === date && t.start !== undefined)
-    .map((t) => ({ kind: "task", id: t.id, title: t.title, start: t.start!, duration: t.duration, category: t.category, completed: !!t.completed, actual: t.actual }));
+    .map((t) => ({ kind: "task", id: t.id, date, title: t.title, start: t.start!, duration: t.duration, category: t.category, completed: !!t.completed, actual: t.actual }));
   return [...events, ...tasks].sort((a, b) => a.start - b.start);
 }
 
@@ -86,17 +117,18 @@ export function currentBlock(data: PlannerData, today: string, now: number): Blo
 /** Example data for a first visit, laid out around the current week. */
 export function sampleData(today = new Date()): PlannerData {
   const t = toKey(today), week = startOfWeek(today);
+  const monday = toKey(addDays(today, -((today.getDay() + 6) % 7)));
   const day = (n: number) => toKey(addDays(week, n));
   const events: CalendarEvent[] = [
-    { id: "e1", title: "Morning run", date: t, start: 7.5, duration: 60, category: "health", meta: "River loop" },
+    { id: "e1", title: "Morning run", date: monday, start: 7, duration: 45, category: "health", meta: "River loop", repeat: "weekdays" },
     { id: "e2", title: "Cognitive Science", date: t, start: 10, duration: 75, category: "study", meta: "Hawkins 214" },
     { id: "e3", title: "Lunch with Maya", date: t, start: 12.5, duration: 60, category: "personal", meta: "June's Cafe" },
     { id: "e4", title: "Statistics seminar", date: t, start: 15, duration: 75, category: "study", meta: "Zoom" },
     { id: "e5", title: "Dinner", date: t, start: 19, duration: 60, category: "life", meta: "Home" },
     ...([
-      { id: "e6", title: "Linear Algebra", date: day(0), start: 9, duration: 90, category: "study", meta: "Science 101" },
+      { id: "e6", title: "Linear Algebra", date: day(0), start: 9, duration: 90, category: "study", meta: "Science 101", repeat: "weekly" },
       { id: "e7", title: "Gym, legs", date: day(1), start: 17.5, duration: 60, category: "health", meta: "Rec center" },
-      { id: "e8", title: "Linear Algebra", date: day(2), start: 9, duration: 90, category: "study", meta: "Science 101" },
+      { id: "e8", title: "Linear Algebra", date: day(2), start: 9, duration: 90, category: "study", meta: "Science 101", repeat: "weekly" },
       { id: "e9", title: "Study group", date: day(3), start: 16, duration: 90, category: "study", meta: "Library 3F" },
       { id: "e10", title: "Brunch with roommates", date: day(5), start: 11, duration: 90, category: "personal", meta: "Sunny Side" },
       { id: "e11", title: "Long run", date: day(6), start: 8, duration: 75, category: "health", meta: "Lakeshore" },

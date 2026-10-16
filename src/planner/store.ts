@@ -68,6 +68,9 @@ export function usePlanner() {
             ? { ...d, tasks: d.tasks.map((t) => (t.id === id ? { ...t, date, start } : t)) }
             : { ...d, events: d.events.map((e) => (e.id === id ? { ...e, date, start } : e)) },
         ),
+      /** Removes one day from a repeating event. */
+      skipOccurrence: (id: string, date: string) =>
+        change((d) => ({ ...d, events: d.events.map((e) => (e.id === id ? { ...e, skip: [...(e.skip ?? []), date] } : e)) })),
       /** Takes a task off the timeline and back into its list. */
       unschedule: (id: string) =>
         change((d) => ({ ...d, tasks: d.tasks.map((t) => (t.id === id ? { ...t, date: undefined, start: undefined } : t)) })),

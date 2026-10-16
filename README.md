@@ -8,18 +8,21 @@ pane of dark glass, and Focus mode turns the room into a place to work.
 The planner started as a copy of Daylight (the Lovable app), rebuilt here around the window. The Lovable
 project is untouched.
 
-## Run it
+## Download
+
+Installers for Mac, Windows and Linux are on this project's **Releases** page. See [INSTALL.md](INSTALL.md) for
+step-by-step instructions (including the one-time security prompts), and [RELEASING.md](RELEASING.md) for how to
+publish a new version.
+
+## Run it from the source
 
 ```sh
 npm install
 npm run dev        # in the browser, with hot reload
 npm run desktop    # as a desktop app
-npm run dist       # build an installer into release/ (.dmg on a Mac, .exe on Windows, AppImage on Linux)
+npm run dist       # build an installer for this computer into release/
 npm test
 ```
-
-Build the installer on the system you want to run it on. The app isn't code-signed, so the first time you
-open it on a Mac, right-click it and choose **Open**. The desktop app keeps its data between launches.
 
 ## Using it
 
@@ -36,8 +39,21 @@ open it on a Mac, right-click it and choose **Open**. The desktop app keeps its 
 - **Replan** (`R`) moves tasks that fell behind into the free time left today.
 - **Focus** (`F`) works on the block happening now, or the next one, or a free session when the day is clear.
   Focused minutes are recorded on the block. `Space` pauses and `Esc` exits.
-- **The window**: choose a city and scene in the bottom bar, and turn sound on. *Adjust* lets you pick the
-  weather by hand, preview another time of day, set the free focus length and the volume.
+- **The window**: search for any city and choose a scene in the bottom bar, and turn sound on. *Adjust* lets you pick
+  the weather by hand, preview another time of day, and set the volume.
+- **Repeating events**: an event can repeat every day, every weekday or every week. Delete one day or the whole series.
+- **Settings** (the gear): °C/°F, 12/24-hour clock, the first day of the week, reminders, layout, backups, and in the
+  desktop app the live wallpaper, open at login and what's playing.
+
+## Desktop extras
+
+- **Live wallpaper**: the window behind your desktop icons (macOS and Linux; experimental on Windows), from the menu
+  bar or tray icon or Settings. Choose the whole room or just the view.
+- **What's playing**: Spotify (macOS, Windows) or Apple Music (macOS) puts a record player on the sill with the album
+  art spinning, tints the lamp with the album's colour, shows a small player with controls, and turns the ambience down.
+  It reads the player locally (AppleScript on macOS, the Spotify window on Windows): no account or API key.
+- **Menu bar / tray icon**: open the planner, start Focus, toggle the wallpaper, quit. Closing the window keeps the app
+  (and the wallpaper) running there.
 
 ## How it fits together
 
@@ -46,7 +62,8 @@ open it on a Mac, right-click it and choose **Open**. The desktop app keeps its 
 | `src/window/` | The live window: astronomy, weather, environment, renderer, procedural audio, and the scenes in `packs/` |
 | `src/planner/` | The planner's data model, storage, quick-add parser and replanning (pure functions, tested) |
 | `src/ui/` | React components: the scene canvas, day sheet, timeline, tray, editor, focus card, dock |
-| `electron/` | The desktop shell, which serves the built app from a private `awindow://` origin |
+| `electron/` | The desktop shell: serves the app from a private `awindow://` origin, plus the tray, wallpaper and music |
+| `src/settings.ts`, `src/music.ts`, `src/desktop.ts` | Preferences, now-playing state, and the bridge to the desktop shell |
 | `scripts/artifact.mjs` | Turns the build into a page for publishing as a Claude artifact (`npm run artifact`) |
 
 The window engine (`src/window/engine.ts`) runs one clock, weather feed and soundscape and knows nothing

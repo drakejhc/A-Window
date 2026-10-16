@@ -14,6 +14,12 @@ import { Replan } from "@/ui/Replan";
 import { Scene } from "@/ui/Scene";
 import { Sheet } from "@/ui/Sheet";
 import { useWindow } from "@/ui/use-window";
+import { desktop } from "@/desktop";
+import { useMusic, watchMusic } from "@/music";
+import { SettingsContext, useSettingsState } from "@/settings";
+import { NowPlaying } from "@/ui/NowPlaying";
+import { SettingsPanel } from "@/ui/SettingsPanel";
+import { Welcome } from "@/ui/Welcome";
 import { Workspace, type Mode, type View } from "@/ui/Workspace";
 import type { Bucket } from "@/planner/model";
 
@@ -62,6 +68,8 @@ function useFade(open: boolean, ms = 450) {
 const isTyping = (t: EventTarget | null) => t instanceof HTMLElement && !!t.closest("input, textarea, select, [contenteditable]");
 
 export function App() {
+  const settingsApi = useSettingsState();
+  const { settings } = settingsApi;
   const planner = usePlanner();
   const { state } = planner;
   const { engine } = useWindow();
@@ -84,6 +92,8 @@ export function App() {
   const [mode, setMode] = useState<Mode>("calendar");
   const [bucket, setBucket] = useState<Bucket>("Today");
   const [palette, setPalette] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const music = useMusic();
   const [trayOpen, setTrayOpen] = usePref("tray", true);
   const [focusMinutes, setFocusMinutes] = usePref("focus", 25);
   const [idle, setIdle] = useState(false);
@@ -112,8 +122,8 @@ export function App() {
   const withUndo = (message: string, before: PlannerState) => notify(message, () => planner.restore(before));
   const dayName = (key: string) => (key === todayKey ? "today" : fromKey(key).toLocaleDateString(undefined, { weekday: "long" }));
 
-  function open(kind: Kind, id: string) {
-    setDraft(draftFor(state, kind, id, selected));
+  function open(kind: Kind, id: string, date?: string) {
+    setDraft(draftFor(state, kind, id, selected, date ?? selected));
     setSheetOpen(true);
   }
 
@@ -131,7 +141,7 @@ export function App() {
       if (d.id) planner.updateTask(d.id, fields);
       else planner.addTask(fields);
     } else {
-      const fields = { ...shared, date: d.date, start: start ?? 9, meta: d.meta || undefined };
+      const fields = { ...shared, date: d.date, start: start ?? 9, meta: d.meta || undefined, repeat: d.repeat || undefined };
       if (d.id) planner.updateEvent(d.id, fields);
       else planner.addEvent(fields);
     }
@@ -140,12 +150,16 @@ export function App() {
     notify(clash ? `Saved. It overlaps something else at ${formatHour(start!)}` : d.id ? "Saved" : `Added “${title}”`);
   }
 
-  function deleteDraft() {
+  function deleteDraft(onlyThisDay = false) {
     if (!draft?.id) return;
     const before = state;
-    planner.remove(draft.kind, draft.id);
     setDraft(null);
-    withUndo(`Deleted “${draft.title}”`, before);
+    if (onlyThisDay && draft.kind === "event") {
+      planner.skipOccurrence(draft.id, draft.occurrence);
+      return withUndo(`Removed “${draft.title}” from ${dayName(draft.occurrence)}`, before);
+    }
+    planner.remove(draft.kind, draft.id);
+    withUndo(`Deleted “${draft.title}”${draft.repeat ? " and its repeats" : ""}`, before);
   }
 
   function quickAdd(text: string) {
@@ -204,7 +218,7 @@ export function App() {
 
   // Keyboard shortcuts, ignored while typing.
   const keys = useRef({ startFocus, openReplan, todayKey, selected, focusing: false, editing: false, full, workspace: false, modal: false });
-  keys.current = { startFocus, openReplan, todayKey, selected, focusing: !!focus, editing: !!draft, full, workspace: ws.visible, modal: palette || !!replan };
+  keys.current = { startFocus, openReplan, todayKey, selected, focusing: !!focus, editing: !!draft, full, workspace: ws.visible, modal: palette || !!replan || settingsOpen || !settings.onboarded };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const k = keys.current;
@@ -242,6 +256,46 @@ export function App() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [setSheetOpen, setView]);
+
+  // Reminders: a notification five minutes before each block on today's plan.
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  useEffect(() => {
+    if (!settings.notify || !("Notification" in window)) return;
+    const sent = new Set<string>();
+    const check = () => {
+      if (Notification.permission !== "granted") return;
+      const n = new Date(), today = toKey(n), h = nowHour(n);
+      for (const b of blocksOn(stateRef.current, today)) {
+        const key = `${b.kind}-${b.id}-${today}-${b.start}`;
+        const ahead = b.start - h;
+        if (b.completed || ahead <= 0 || ahead > 5 / 60 || sent.has(key)) continue;
+        sent.add(key);
+        const note = new Notification(`${b.title} at ${formatHour(b.start)}`, { body: b.meta ? `${b.meta} · in ${Math.round(ahead * 60)} minutes` : `Starts in ${Math.round(ahead * 60)} minutes`, tag: key });
+        note.onclick = () => window.focus();
+      }
+    };
+    check();
+    const t = window.setInterval(check, 20_000);
+    return () => window.clearInterval(t);
+  }, [settings.notify]);
+
+  // Music from Spotify or Apple Music (desktop app): watch it, and turn the ambience down while it plays.
+  useEffect(() => watchMusic(settings.music), [settings.music]);
+  useEffect(() => engine.audio.setDuck(music.np?.state === "playing" ? 0.3 : 1), [engine, music.np?.state]);
+
+  // Commands from the desktop app's menu bar icon.
+  const commands = useRef({ startFocus });
+  commands.current = { startFocus };
+  useEffect(
+    () =>
+      desktop?.onCommand((cmd) => {
+        if (cmd === "focus") commands.current.startFocus();
+        else if (cmd === "planner") setSheetOpen(true);
+        else if (cmd === "settings") setSettingsOpen(true);
+      }),
+    [setSheetOpen],
+  );
 
   // The bottom controls fade away when you stop moving, leaving the window and the day.
   useEffect(() => {
@@ -285,9 +339,15 @@ export function App() {
     planner.startFresh();
     withUndo("Cleared the example plan", before);
   };
-  const place = (kind: Kind, id: string, date: string, start: number) => planner.place(kind, id, date, start);
+  // Moving a repeating event moves the whole series: a weekly one to the new weekday, a daily one to the new time.
+  const place = (kind: Kind, id: string, date: string, start: number) => {
+    const e = kind === "event" ? state.events.find((x) => x.id === id) : undefined;
+    if (e?.repeat === "daily" || e?.repeat === "weekdays") planner.updateEvent(id, { start });
+    else planner.place(kind, id, date, start);
+  };
 
   return (
+    <SettingsContext.Provider value={settingsApi}>
     <div className="app" data-idle={idle || undefined} data-side={sideOpen || undefined} data-workspace={ws.visible || undefined} style={{ "--side-w": `${SIDE_W}px` } as React.CSSProperties}>
       <Scene align={align} />
       <Readout />
@@ -327,6 +387,7 @@ export function App() {
           onQuickAdd={() => setPalette(true)}
           onNewEvent={newEvent}
           onStartFresh={startFresh}
+          onSettings={() => setSettingsOpen(true)}
         />
       )}
 
@@ -361,20 +422,30 @@ export function App() {
           />
         ))}
 
-      <Dock
-        sheetOpen={sheetOpen && !focus}
-        onToggleSheet={() => (focus ? undefined : setSheetOpen((v) => !v))}
-        focusing={!!focus}
-        focusLabel={focus ? "Focusing" : "Focus"}
-        onFocus={startFocus}
-        focusMinutes={focusMinutes}
-        onFocusMinutes={setFocusMinutes}
-        layout={layout}
-        onLayout={(l) => {
-          setLayout(l);
-          setDraft(null);
-        }}
-      />
+      <Dock sheetOpen={sheetOpen && !focus} onToggleSheet={() => (focus ? undefined : setSheetOpen((v) => !v))} focusing={!!focus} onFocus={startFocus} onSettings={() => setSettingsOpen(true)} />
+      {!ws.visible && <NowPlaying />}
+
+      {settingsOpen && (
+        <SettingsPanel
+          layout={layout}
+          onLayout={(l) => {
+            setLayout(l);
+            setDraft(null);
+          }}
+          focusMinutes={focusMinutes}
+          onFocusMinutes={setFocusMinutes}
+          onStartFresh={startFresh}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
+      {!settings.onboarded && (
+        <Welcome
+          onDone={(keepExample) => {
+            if (!keepExample) planner.startFresh();
+            settingsApi.update({ onboarded: true });
+          }}
+        />
+      )}
 
       {palette && <QuickAddDialog todayKey={todayKey} onAdd={quickAdd} onClose={() => setPalette(false)} />}
 
@@ -409,5 +480,6 @@ export function App() {
         />
       )}
     </div>
+    </SettingsContext.Provider>
   );
 }

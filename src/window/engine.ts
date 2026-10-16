@@ -10,10 +10,12 @@ import { atticRoom } from "./packs/attic-room";
 import { fjordCabin } from "./packs/fjord-cabin";
 import type { AnyPack } from "./types";
 import { describe, fetchCurrent, type Weather } from "./weather";
+import { isWallpaper } from "../desktop";
+import { getMusic } from "../music";
 
 export const PACKS: AnyPack[] = [atticRoom, fjordCabin];
 export type WeatherStatus = "loading" | "live" | "stale" | "offline" | "preset";
-export type WindowPrefs = { city: string; sound: boolean; volume: number; preset: number | null; scene: string };
+export type WindowPrefs = { city: string; sound: boolean; volume: number; preset: number | null; scene: string; custom?: City | undefined };
 export type WindowSnapshot = {
   city: City;
   prefs: WindowPrefs;
@@ -41,11 +43,12 @@ function loadPrefs(): WindowPrefs {
   try {
     const p = JSON.parse(window.localStorage.getItem(PREFS_KEY) ?? "{}") as Partial<WindowPrefs>;
     return {
-      city: cityById(p.city) ? p.city! : fallback.city,
+      city: cityById(p.city) || p.custom?.id === p.city ? p.city! : fallback.city,
       sound: typeof p.sound === "boolean" ? p.sound : fallback.sound,
       volume: typeof p.volume === "number" ? Math.min(1, Math.max(0, p.volume)) : fallback.volume,
       preset: typeof p.preset === "number" ? p.preset : null,
       scene: PACKS.some((k) => k.id === p.scene) ? p.scene! : "auto",
+      custom: p.custom && typeof p.custom.lat === "number" && typeof p.custom.tz === "string" ? p.custom : undefined,
     };
   } catch {
     return fallback;
@@ -72,7 +75,8 @@ export class WindowEngine {
   private refresh: number | undefined;
   private fetchCtl: AbortController | null = null;
 
-  constructor() {
+  /** silent: never plays sound (the desktop wallpaper). */
+  constructor(private silent = false) {
     this.prefs = loadPrefs();
     this.env = new Environment(this.city);
     this.env.update(this.now(), 0);
@@ -82,11 +86,15 @@ export class WindowEngine {
     this.env.onThunder = (d) => this.audio.thunder(d);
     window.addEventListener("pointerdown", () => this.audio.unlock());
     window.addEventListener("keydown", () => this.audio.unlock());
+    // Another window (the wallpaper, or a second tab) changed the window's settings.
+    window.addEventListener("storage", (e) => {
+      if (e.key === PREFS_KEY) this.adopt(loadPrefs());
+    });
     this.publish();
   }
 
   get city(): City {
-    return cityById(this.prefs.city) ?? CITIES[0]!;
+    return cityById(this.prefs.city) ?? (this.prefs.custom?.id === this.prefs.city ? this.prefs.custom : undefined) ?? CITIES[0]!;
   }
 
   /** The scene's current time, including any preview shift. */
@@ -113,16 +121,34 @@ export class WindowEngine {
     };
   }
 
-  setCity(id: string) {
-    const city = cityById(id);
+  /** Moves the window to a city: one from the built-in list, or any city found by search. */
+  setCity(id: string, found?: City) {
+    const city = cityById(id) ?? found;
     if (!city || city.id === this.prefs.city) return;
-    this.prefs = { ...this.prefs, city: city.id };
+    this.prefs = { ...this.prefs, city: city.id, ...(cityById(id) ? {} : { custom: city }) };
+    this.applyCity();
+    this.save();
+  }
+
+  /** Follows settings changed in another window. */
+  private adopt(next: WindowPrefs) {
+    const moved = next.city !== this.prefs.city;
+    const soundChanged = next.sound !== this.prefs.sound;
+    this.prefs = next;
+    this.audio.setVolume(next.volume);
+    if (soundChanged) this.setSound(next.sound);
+    if (moved) this.applyCity();
+    else this.env.setWeather(this.effectiveWeather());
+    this.publish();
+  }
+
+  private applyCity() {
+    const city = this.city;
     this.live = null;
     this.status = "loading";
     this.env.setCity(city);
     this.env.update(this.now(), 0);
     this.env.setWeather(this.effectiveWeather(), true);
-    this.save();
     if (this.tickables.size) void this.loadWeather();
   }
 
@@ -133,7 +159,7 @@ export class WindowEngine {
 
   setSound(on: boolean) {
     this.prefs = { ...this.prefs, sound: on };
-    if (on && this.tickables.size) this.audio.start();
+    if (on && this.tickables.size && !this.silent) this.audio.start();
     else this.audio.stop();
     this.save();
   }
@@ -185,13 +211,14 @@ export class WindowEngine {
       const dt = Math.min(0.1, Math.max(0, (ts - this.last) / 1000));
       this.last = ts;
       this.env.update(this.now(), dt);
+      this.env.updateMusic(getMusic(), dt);
       for (const t of this.tickables) t.tick(this.env, dt);
       this.raf = requestAnimationFrame(loop);
     };
     this.raf = requestAnimationFrame(loop);
     void this.loadWeather();
     this.refresh = window.setInterval(() => void this.loadWeather(), REFRESH_MS);
-    if (this.prefs.sound) this.audio.start();
+    if (this.prefs.sound && !this.silent) this.audio.start();
   }
 
   private stop() {
@@ -242,6 +269,6 @@ export class WindowEngine {
 
 let engine: WindowEngine | null = null;
 export function getWindowEngine() {
-  engine ??= new WindowEngine();
+  engine ??= new WindowEngine(isWallpaper);
   return engine;
 }

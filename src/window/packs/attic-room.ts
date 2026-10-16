@@ -38,6 +38,7 @@ export type AtticData = {
   plant: { x: number; leaves: { a: number; len: number; w: number; p: number }[] };
   mug: { x: number };
   lamp: { x: number; y: number };
+  turntable: { x: number; y: number };
 };
 
 const SNOW: RGB = [236, 240, 248];
@@ -274,6 +275,7 @@ export const atticRoom: WindowPack<AtticData> = {
       },
       mug: { x: g.x + g.w * 0.3 },
       lamp: { x: g.x + g.w * 0.85, y: sillY - 150 * s },
+      turntable: { x: g.x + g.w * 0.56, y: sillY + g.frame * 0.3 },
     };
   },
 
@@ -305,9 +307,9 @@ export const atticRoom: WindowPack<AtticData> = {
         d.lamp.y,
         Math.max(W, H) * 0.65,
       );
-      grd.addColorStop(0, rgba([255, 176, 96], 0.42 * env.lamp));
-      grd.addColorStop(0.35, rgba([255, 150, 80], 0.13 * env.lamp));
-      grd.addColorStop(1, rgba([255, 150, 80], 0));
+      grd.addColorStop(0, rgba(env.lampColor, 0.42 * env.lamp));
+      grd.addColorStop(0.35, rgba(env.lampColor, 0.13 * env.lamp));
+      grd.addColorStop(1, rgba(env.lampColor, 0));
       ctx.fillStyle = grd;
       ctx.fillRect(0, 0, W, H);
     }

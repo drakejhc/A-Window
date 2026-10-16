@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { BUCKETS, CATEGORIES, DURATIONS, formatDuration, formatHour, parseTime, toTime, uid, type Bucket, type Category, type Kind, type PlannerData, type Subtask } from "@/planner/model";
+import { BUCKETS, CATEGORIES, DURATIONS, formatDuration, formatHour, parseTime, REPEATS, toTime, uid, type Bucket, type Category, type Kind, type PlannerData, type Repeat, type Subtask } from "@/planner/model";
 
 import { Icon } from "./icons";
 
@@ -18,24 +18,27 @@ export type Draft = {
   notes: string;
   subtasks: Subtask[];
   actual: number;
+  repeat: Repeat | "";
+  /** The day that was clicked, for "delete this day" on a repeating event. */
+  occurrence: string;
 };
 
-export function draftFor(data: PlannerData, kind: Kind, id: string, fallbackDate: string): Draft | null {
+export function draftFor(data: PlannerData, kind: Kind, id: string, fallbackDate: string, occurrence = fallbackDate): Draft | null {
   if (kind === "task") {
     const t = data.tasks.find((x) => x.id === id);
     if (!t) return null;
-    return { kind, id, title: t.title, category: t.category, duration: t.duration, date: t.date ?? fallbackDate, time: t.start !== undefined ? toTime(t.start) : "", bucket: t.bucket, meta: "", notes: t.notes ?? "", subtasks: t.subtasks ?? [], actual: t.actual ?? 0 };
+    return { kind, id, title: t.title, category: t.category, duration: t.duration, date: t.date ?? fallbackDate, time: t.start !== undefined ? toTime(t.start) : "", bucket: t.bucket, meta: "", notes: t.notes ?? "", subtasks: t.subtasks ?? [], actual: t.actual ?? 0, repeat: "", occurrence };
   }
   const e = data.events.find((x) => x.id === id);
   if (!e) return null;
-  return { kind, id, title: e.title, category: e.category, duration: e.duration, date: e.date, time: toTime(e.start), bucket: "Today", meta: e.meta ?? "", notes: e.notes ?? "", subtasks: e.subtasks ?? [], actual: e.actual ?? 0 };
+  return { kind, id, title: e.title, category: e.category, duration: e.duration, date: e.date, time: toTime(e.start), bucket: "Today", meta: e.meta ?? "", notes: e.notes ?? "", subtasks: e.subtasks ?? [], actual: e.actual ?? 0, repeat: e.repeat ?? "", occurrence };
 }
 
 export const newDraft = (kind: Kind, date: string, time = ""): Draft => ({
-  kind, title: "", category: kind === "event" ? "personal" : "study", duration: kind === "event" ? 60 : 30, date, time: kind === "event" ? time || "09:00" : time, bucket: "Today", meta: "", notes: "", subtasks: [], actual: 0,
+  kind, title: "", category: kind === "event" ? "personal" : "study", duration: kind === "event" ? 60 : 30, date, time: kind === "event" ? time || "09:00" : time, bucket: "Today", meta: "", notes: "", subtasks: [], actual: 0, repeat: "", occurrence: date,
 });
 
-type Props = { draft: Draft; onChange: (d: Draft) => void; onSave: () => void; onCancel: () => void; onDelete: () => void; onUnschedule: () => void };
+type Props = { draft: Draft; onChange: (d: Draft) => void; onSave: () => void; onCancel: () => void; onDelete: (onlyThisDay: boolean) => void; onUnschedule: () => void };
 
 export function Editor({ draft, onChange, onSave, onCancel, onDelete, onUnschedule }: Props) {
   const [newItem, setNewItem] = useState("");
@@ -110,6 +113,19 @@ export function Editor({ draft, onChange, onSave, onCancel, onDelete, onUnschedu
             <input value={draft.meta} onChange={(e) => set("meta", e.target.value)} placeholder="Optional" />
           </label>
         )}
+        {!isTask && (
+          <label className="field">
+            <span>Repeats</span>
+            <select value={draft.repeat} onChange={(e) => set("repeat", e.target.value as Repeat | "")}>
+              <option value="">Never</option>
+              {REPEATS.map((r) => (
+                <option key={r.value} value={r.value}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
       {draft.time && (
         <p className="editor-note">
@@ -169,9 +185,16 @@ export function Editor({ draft, onChange, onSave, onCancel, onDelete, onUnschedu
 
       <div className="editor-foot">
         {draft.id ? (
-          <button type="button" className="ghost-btn danger" onClick={onDelete}>
-            <Icon name="trash" /> Delete
-          </button>
+          <div className="delete-group">
+            {draft.repeat && (
+              <button type="button" className="ghost-btn danger" onClick={() => onDelete(true)}>
+                <Icon name="trash" /> This day
+              </button>
+            )}
+            <button type="button" className="ghost-btn danger" onClick={() => onDelete(false)}>
+              {!draft.repeat && <Icon name="trash" />} {draft.repeat ? "All" : "Delete"}
+            </button>
+          </div>
         ) : (
           <span />
         )}

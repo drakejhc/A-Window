@@ -12,6 +12,7 @@ export class Ambience {
   enabled = false;
   private ctx: AudioContext | null = null;
   private volume = 0.6;
+  private duck = 1;
   private env: Environment | null = null;
   private weights: AmbienceWeights = { rain: 1, wind: 1, city: 1, fire: 1, crickets: 1, birds: 1 };
   private timer: number | undefined;
@@ -55,9 +56,16 @@ export class Ambience {
     this.applyVolume();
   }
 
+  /** Turns the ambience down (0..1) while something else is playing, like your music. */
+  setDuck(level: number) {
+    if (level === this.duck) return;
+    this.duck = level;
+    this.applyVolume();
+  }
+
   private applyVolume() {
     if (!this.ctx) return;
-    this.master.gain.setTargetAtTime(this.enabled ? this.volume : 0, this.ctx.currentTime, 0.35);
+    this.master.gain.setTargetAtTime(this.enabled ? this.volume * this.duck : 0, this.ctx.currentTime, 0.8);
   }
 
   private build() {
