@@ -31,7 +31,7 @@ export const VIEWS: { id: string; name: string; pack: AnyView }[] = [
 export const ROOMS: { id: string; name: string; pack: AnyRoom; three?: string; view?: string }[] = [
   { id: "painted", name: "Midnight study (painted)", pack: paintedStudy, view: "painted-city" },
   { id: "painted-bedroom", name: "Cozy bedroom (painted)", pack: paintedBedroom, view: "painted-valley" },
-  { id: "listening", name: "Listening room (3D)", pack: paintedStudy, three: "listening" },
+  { id: "listening", name: "Listening room (3D)", pack: paintedStudy, three: "listening", view: "painted-city" },
   { id: "cabin3d", name: "Nordic cabin (3D)", pack: paintedBedroom, three: "cabin" },
   { id: "japanese", name: "Japanese room (3D)", pack: paintedStudy, three: "japanese" },
   { id: "mediterranean", name: "Mediterranean (3D)", pack: paintedStudy, three: "mediterranean" },
