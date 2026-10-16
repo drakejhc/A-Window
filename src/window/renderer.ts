@@ -14,6 +14,8 @@ export type RendererOptions = {
   /** Frame-rate cap, to keep a background canvas cheap. */
   maxFps?: number;
   maxDpr?: number;
+  /** A fixed size in CSS pixels, for a canvas that isn't on the page (the view behind a 3D room's glass). */
+  size?: { width: number; height: number };
 };
 
 function computeGeom(W: number, H: number, opts: RendererOptions): Geom {
@@ -181,6 +183,14 @@ export class Renderer {
     this.resize();
   }
 
+  /** Resizes a canvas that isn't on the page. */
+  setSize(width: number, height: number) {
+    const cur = this.opts.size;
+    if (cur && cur.width === width && cur.height === height) return;
+    this.opts = { ...this.opts, size: { width, height } };
+    this.resize();
+  }
+
   setPointer(nx: number, ny: number) {
     this.pointer.tx = nx;
     this.pointer.ty = ny;
@@ -202,7 +212,7 @@ export class Renderer {
   }
 
   resize() {
-    const rect = this.canvas.getBoundingClientRect();
+    const rect = this.opts.size ?? this.canvas.getBoundingClientRect();
     const W = Math.max(1, rect.width),
       H = Math.max(1, rect.height);
     this.dpr = Math.min(this.opts.maxDpr ?? 2, window.devicePixelRatio || 1);

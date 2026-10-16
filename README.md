@@ -39,7 +39,8 @@ npm test
 - **Replan** (`R`) moves tasks that fell behind into the free time left today.
 - **Focus** (`F`) works on the block happening now, or the next one, or a free session when the day is clear.
   Focused minutes are recorded on the block. `Space` pauses and `Esc` exits.
-- **The window**: search for any city and choose a room in the bottom bar (Lofi study, Warm minimal, Attic, Log cabin),
+- **The window**: search for any city and choose a room in the bottom bar (Listening room (3D), Lofi study, Warm minimal,
+  Attic, Log cabin),
   and turn sound on. *Adjust* picks the view outside (rooftops or a fjord), the weather, a preview of another time of
   day, and the volume. Any room goes with any view.
 - **Repeating events**: an event can repeat every day, every weekday or every week. Delete one day or the whole series.
@@ -77,6 +78,13 @@ the walls around the window and the desk or sill in front of it. The renderer ha
 between, so any room works with any view. See `src/window/types.ts` for the interfaces, `packs/lofi-study.ts` and
 `packs/warm-minimal.ts` for rooms, and `packs/props.ts` for the shared cat, mug, plant, books and fairy lights. Add a
 pack to `VIEWS` or `ROOMS` in `engine.ts` and it appears in the pickers.
+
+**3D rooms** (`src/window/three/`) are rendered with three.js and loaded only when chosen. The view outside is the same
+2D renderer drawing to a canvas that becomes a texture behind the glass. The room is lit by the real sun (with its
+shadows through the window and blinds), the sky's colour and the lamp, with ambient occlusion and a little bloom.
+Low sun also comes in through unseen side windows, so blind stripes slant across the wall as the day goes on. A design
+(`listening-room.ts`) builds its furniture from the parts in `kit.ts` and textures painted in `textures.ts`, so there
+are no image files. Without WebGL, a 3D room falls back to its 2D stand-in.
 
 Weather comes from [Open-Meteo](https://open-meteo.com) (free, no key) and refreshes every 15 minutes.
 Your plan is stored in this browser or app only (localStorage); there is no account.

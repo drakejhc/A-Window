@@ -20,7 +20,9 @@ export const VIEWS: { id: string; name: string; pack: AnyView }[] = [
   { id: "rooftops", name: "Rooftops", pack: atticRoom },
   { id: "fjord", name: "Fjord", pack: fjordCabin },
 ];
-export const ROOMS: { id: string; name: string; pack: AnyRoom }[] = [
+/** `three` names a rendered 3D room (see `three/`); `pack` is the 2D room shown where WebGL isn't available. */
+export const ROOMS: { id: string; name: string; pack: AnyRoom; three?: string }[] = [
+  { id: "listening", name: "Listening room (3D)", pack: warmMinimal, three: "listening" },
   { id: "lofi", name: "Lofi study", pack: lofiStudy },
   { id: "minimal", name: "Warm minimal", pack: warmMinimal },
   { id: "attic", name: "Attic", pack: atticRoom },
@@ -33,6 +35,8 @@ export type WindowSnapshot = {
   prefs: WindowPrefs;
   view: AnyView;
   room: AnyRoom;
+  /** The 3D room to render instead of `room`, if one is chosen. */
+  room3d: string | null;
   status: WeatherStatus;
   weather: Weather;
   /** Milliseconds the scene is shifted from the real time, for previewing dusk or night. */
@@ -78,10 +82,11 @@ function loadPrefs(): WindowPrefs {
 export function sceneFor(prefs: Pick<WindowPrefs, "view" | "room">, city: City) {
   const north = Math.abs(city.lat) >= 58;
   const view = VIEWS.find((v) => v.id === prefs.view)?.pack ?? (north ? fjordCabin : atticRoom);
-  const room = ROOMS.find((r) => r.id === prefs.room)?.pack ?? (north ? fjordCabin : lofiStudy);
+  const entry = ROOMS.find((r) => r.id === prefs.room);
+  const room = entry?.pack ?? (north ? fjordCabin : lofiStudy);
   // Weather sounds come from outside; the fire and its crackle belong to the room.
   const ambience: AmbienceWeights = { ...view.ambience, fire: room.ambience.fire };
-  return { view, room, ambience };
+  return { view, room, room3d: entry?.three ?? null, ambience };
 }
 
 export class WindowEngine {
@@ -277,13 +282,14 @@ export class WindowEngine {
   }
 
   private publish() {
-    const { view, room, ambience } = sceneFor(this.prefs, this.city);
+    const { view, room, room3d, ambience } = sceneFor(this.prefs, this.city);
     this.audio.setWeights(ambience);
     this.snapshot = {
       city: this.city,
       prefs: this.prefs,
       view,
       room,
+      room3d,
       status: this.prefs.preset !== null ? "preset" : this.status,
       weather: this.effectiveWeather(),
       shift: this.shift,
