@@ -1,7 +1,7 @@
 // Electron shell for A Window. Serves the built app from a private awindow:// origin so its local storage
 // (your plan and settings) persists, and adds what only a desktop app can do: a menu bar icon, the live
 // wallpaper, opening at login, and seeing what's playing in Spotify or Apple Music.
-const { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage, net, protocol, shell } = require("electron");
+const { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage, net, protocol, screen, shell } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
@@ -55,9 +55,24 @@ const watcher = createWatcher((np) => {
 });
 const updateMusicWatch = () => watcher.set(musicWanted.size > 0);
 
+/** The saved window position, if it is still on a connected screen; otherwise just the size, so the window opens
+ *  centred on the main screen (for example after an external monitor has been unplugged). */
+function startBounds() {
+  const b = store.bounds ?? {};
+  const size = { width: Math.max(900, b.width ?? 1440), height: Math.max(600, b.height ?? 900) };
+  if (typeof b.x !== "number" || typeof b.y !== "number") return size;
+  // Visible enough to grab: at least 120×60 px of the window's title area must lie within some screen.
+  const grab = { x: b.x + 40, y: b.y, width: 120, height: 60 };
+  const visible = screen.getAllDisplays().some(({ workArea: a }) => grab.x < a.x + a.width && grab.x + grab.width > a.x && grab.y < a.y + a.height && grab.y + grab.height > a.y && grab.y >= a.y - 20);
+  if (!visible) return size;
+  // Also keep a window that was bigger than its screen from spilling off it.
+  const d = screen.getDisplayMatching({ x: b.x, y: b.y, width: size.width, height: size.height }).workArea;
+  return { x: b.x, y: b.y, width: Math.min(size.width, d.width), height: Math.min(size.height, d.height) };
+}
+
 function createMain({ show = true } = {}) {
   main = new BrowserWindow({
-    ...store.bounds,
+    ...startBounds(),
     minWidth: 900,
     minHeight: 600,
     title: "A Window",
