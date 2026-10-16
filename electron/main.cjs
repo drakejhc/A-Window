@@ -43,7 +43,15 @@ let tray = null;
 let refreshTray = () => {};
 const musicWanted = new Set();
 const watcher = createWatcher((np) => {
-  for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send("now-playing", np);
+  for (const w of BrowserWindow.getAllWindows()) {
+    // A window that is closing can still be listed after its page is gone; sending to it would throw.
+    if (w.isDestroyed() || w.webContents.isDestroyed()) continue;
+    try {
+      w.webContents.send("now-playing", np);
+    } catch {
+      /* the page went away between the check and the send */
+    }
+  }
 });
 const updateMusicWatch = () => watcher.set(musicWanted.size > 0);
 
@@ -155,14 +163,20 @@ ipcMain.handle("desktop-settings", async (_e, patch) => {
   }
   return { wallpaper: store.wallpaper, wallpaperStyle: store.wallpaperStyle, openAtLogin: store.openAtLogin, ...(error ? { error } : {}) };
 });
+const musicSenders = new Set();
 ipcMain.on("music-watch", (e, on) => {
   const id = e.sender.id;
   if (on) musicWanted.add(id);
   else musicWanted.delete(id);
-  e.sender.once("destroyed", () => {
-    musicWanted.delete(id);
-    updateMusicWatch();
-  });
+  // Clean up once per window when it goes away, not on every call.
+  if (!musicSenders.has(id)) {
+    musicSenders.add(id);
+    e.sender.once("destroyed", () => {
+      musicSenders.delete(id);
+      musicWanted.delete(id);
+      updateMusicWatch();
+    });
+  }
   updateMusicWatch();
 });
 ipcMain.on("music-control", (_e, command) => {
