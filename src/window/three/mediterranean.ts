@@ -39,7 +39,7 @@ export const mediterranean: Design = {
       for (const dy of [-opening.h / 2 + 0.03, 0, opening.h / 2 - 0.03]) box(scene, w, 0.05, 0.035, paint, x, cy + dy, 0.035);
     }
     // A deep tiled sill.
-    worldUV(box(scene, opening.w + 0.04, 0.03, opening.depth, mat([255, 255, 255], { map: toTexture(tiles(3, 42), [1, 1]), roughness: 0.7 }), 0, opening.sill - 0.015, -opening.depth / 2 + 0.02), 0.6);
+    worldUV(box(scene, opening.w + 0.04, 0.03, opening.depth, mat([255, 255, 255], { map: toTexture(tiles(3, 42), [1, 1]), roughness: 0.7 }), 0, opening.sill - 0.003, -opening.depth / 2 + 0.03), 0.6);
 
     // A rustic table.
     const oak = mat([255, 255, 255], { map: toTexture(wood([176, 130, 86], 34)), roughness: 0.7 });

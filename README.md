@@ -40,10 +40,11 @@ npm test
 - **Focus** (`F`) works on the block happening now, or the next one, or a free session when the day is clear.
   Focused minutes are recorded on the block. `Space` pauses and `Esc` exits.
 - **The window**: search for any city and choose a room in the bottom bar. The 3D rooms are the Listening room, a Nordic
-  cabin, a Japanese room and a Mediterranean room; *Auto* picks one to suit the city (the cabin in the far north and
+  cabin, a Japanese room and a Mediterranean room, plus two illustrated ones (a Lofi desk and a Cozy bedroom) that
+  look drawn but keep real perspective and light; *Auto* picks one to suit the city (the cabin in the far north and
   south, the Japanese room in East Asia, the Mediterranean room where it's warm, the Listening room elsewhere). The
   drawn rooms (Lofi study, Warm minimal, Attic, Log cabin) are lighter still,
-  and turn sound on. *Adjust* picks the view outside (rooftops or a fjord), the weather, a preview of another time of
+  and turn sound on. *Adjust* picks the view outside (rooftops, a fjord or a city skyline), the weather, a preview of another time of
   day, and the volume. Any room goes with any view.
 - **Repeating events**: an event can repeat every day, every weekday or every week. Delete one day or the whole series.
 - **Settings** (the gear): °C/°F, 12/24-hour clock, the first day of the week, reminders, layout, backups, and in the
@@ -88,7 +89,8 @@ at all); and a 2D layer on top draws the flicker of lamps, candles and fire. The
 shadows through the window and blinds), the sky's colour and the lamp, with ambient occlusion and a little bloom.
 Low sun also comes in through unseen side windows, so blind stripes slant across the wall as the day goes on. Each design
 (`listening-room.ts`, `nordic-cabin.ts`, `japanese-room.ts`, `mediterranean.ts`) builds its furniture from the parts in `kit.ts` and textures painted in `textures.ts`, so there
-are no image files. Without WebGL, a 3D room falls back to its 2D stand-in.
+are no image files. Illustrated rooms (`style: "illustrated"`) use toon materials from `kit.toon` for a flat,
+drawn look, with a cool window light that turns moonlit blue at night. Without WebGL, a 3D room falls back to its 2D stand-in.
 
 Weather comes from [Open-Meteo](https://open-meteo.com) (free, no key) and refreshes every 15 minutes.
 Your plan is stored in this browser or app only (localStorage); there is no account.

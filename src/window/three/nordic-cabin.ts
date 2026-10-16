@@ -26,13 +26,13 @@ export const nordicCabin: Design = {
     // A painted frame with six panes, and a wide plank sill.
     windowFrame(scene, opening, mat([232, 228, 218], { roughness: 0.5 }), 0.22, 0.055, 2, 3);
     const pine = mat([255, 255, 255], { map: toTexture(wood([196, 150, 100], 15, 0, 512, 128), [1, 1]), roughness: 0.6 });
-    worldUV(box(scene, opening.w + 0.3, 0.05, 0.5, pine, 0, opening.sill - 0.025, -0.1), 1.2);
+    worldUV(box(scene, opening.w + 0.3, 0.05, 0.5, pine, 0, opening.sill - 0.012, -0.1), 1.2);
     // Trim around the opening.
     for (const side of [-1, 1]) box(scene, 0.09, opening.h + 0.09, 0.03, pine, side * (opening.w / 2 + 0.045), opening.sill + opening.h / 2 + 0.02, 0.015);
     box(scene, opening.w + 0.27, 0.09, 0.03, pine, 0, opening.sill + opening.h + 0.045, 0.015);
 
     // Candles and a lantern on the sill.
-    const sill = opening.sill;
+    const sill = opening.sill + 0.013;
     const flames = [candle(scene, -0.5, sill, 0.0, 0.16, 0.035), candle(scene, -0.41, sill, 0.04, 0.1, 0.03), candle(scene, -0.58, sill, 0.06, 0.07, 0.028)];
     const glass = new THREE.MeshStandardMaterial({ color: rgb([255, 240, 220]), roughness: 0.1, transparent: true, opacity: 0.35, emissive: rgb([255, 190, 110]), emissiveIntensity: 0 });
     const iron = mat([36, 34, 32], { roughness: 0.5, metalness: 0.6 });

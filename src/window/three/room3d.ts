@@ -37,6 +37,14 @@ export type Design = {
   eye: number;
   /** How much of the room should fit across the screen at the window's distance, in metres. */
   span: { w: number; h: number };
+  /** The height the camera looks at on the window wall; below `eye` tilts the view down. Defaults to `eye`. */
+  look?: number;
+  /** Moves the camera sideways (`x`) and turns it toward `lookX` on the window wall, to bring a side wall into view. */
+  turn?: { x: number; lookX: number };
+  /** "illustrated" rooms use flat, toon-shaded materials, so the window also lights them with a plain fill light. */
+  style?: "realistic" | "illustrated";
+  /** Whether low sun slants in from unseen side windows (off for rooms whose side walls are in view). */
+  sideSun?: boolean;
   build(scene: THREE.Scene): RoomBuild;
 };
 
@@ -65,6 +73,8 @@ export class Room3D {
   private sideSun = new THREE.DirectionalLight(0xffffff, 0);
   private skyLight: THREE.RectAreaLight;
   private hemi = new THREE.HemisphereLight(0xffffff, 0x6b5440, 0.3);
+  /** Window light for illustrated rooms, whose toon materials ignore the sky's area light. */
+  private fill = new THREE.DirectionalLight(0xffffff, 0);
   private room: RoomBuild;
   private t = 0;
   private sinceRender = 99;
@@ -113,6 +123,11 @@ export class Room3D {
     this.skyLight.position.set(0, o.sill + o.h / 2, -o.depth);
     this.skyLight.lookAt(0, o.sill + o.h / 2, 5);
     this.scene.add(this.skyLight, this.hemi);
+    if (design.style === "illustrated") {
+      this.fill.position.set(0, o.sill + o.h, -4);
+      this.fill.target.position.set(0, o.sill * 0.6, 3);
+      this.scene.add(this.fill, this.fill.target);
+    }
 
     this.room = design.build(this.scene);
 
@@ -165,14 +180,17 @@ export class Room3D {
       else cam.clearViewOffset();
       cam.updateProjectionMatrix();
     }
-    this.base.position.set(0, eye, this.dist);
-    this.base.lookAt(0, eye, 0);
+    const turn = this.design.turn ?? { x: 0, lookX: 0 };
+    this.base.position.set(turn.x, eye, this.dist);
+    this.base.lookAt(turn.lookX, this.design.look ?? eye, 0);
     this.base.updateMatrixWorld();
 
     // The view canvas covers what the opening can show as the camera moves a little.
     const k = (this.dist + VIEW_DEPTH) / this.dist;
     const pw = o.w * k + 0.9, ph = o.h * k + 0.6, cy = o.sill + o.h / 2;
-    const a = this.project(this.base, -pw / 2, cy + ph / 2, -VIEW_DEPTH), b = this.project(this.base, pw / 2, cy - ph / 2, -VIEW_DEPTH);
+    const corners = [[-1, 1], [1, 1], [-1, -1], [1, -1]].map(([sx, sy]) => this.project(this.base, (sx! * pw) / 2, cy + (sy! * ph) / 2, -VIEW_DEPTH));
+    const a = { x: Math.min(...corners.map((c) => c.x)), y: Math.min(...corners.map((c) => c.y)) };
+    const b = { x: Math.max(...corners.map((c) => c.x)), y: Math.max(...corners.map((c) => c.y)) };
     Object.assign(this.layers.view.style, { left: `${a.x}px`, top: `${a.y}px`, width: `${b.x - a.x}px`, height: `${b.y - a.y}px` });
     this.view.resize();
     this.dirty = true;
@@ -212,8 +230,9 @@ export class Room3D {
 
   private render() {
     const { eye } = this.design, p = this.pointer;
-    this.camera.position.set(p.x * 0.12, eye - p.y * 0.05, this.dist);
-    this.camera.lookAt(p.x * 0.03, eye, 0);
+    const turn = this.design.turn ?? { x: 0, lookX: 0 };
+    this.camera.position.set(turn.x + p.x * 0.12, eye - p.y * 0.05, this.dist);
+    this.camera.lookAt(turn.lookX + p.x * 0.03, this.design.look ?? eye, 0);
     this.camera.updateMatrixWorld();
     this.composer.render(this.sinceRender);
     this.renders++;
@@ -269,11 +288,19 @@ export class Room3D {
     const side = rel >= 0 ? 1 : -1, lift = Math.tan(Math.min(alt, THREE.MathUtils.degToRad(48)));
     const sideDir = new THREE.Vector3(side * 0.82, lift * 0.98, 0.58).normalize();
     const sideStrength = smooth(1, 10, env.sunAlt) * clear * (0.4 + 0.6 * smooth(0.05, 0.7, Math.abs(rel)));
-    this.sideSun.visible = sideStrength > 0.01;
+    this.sideSun.visible = sideStrength > 0.01 && this.design.sideSun !== false;
     this.sideSun.intensity = 7 * sideStrength;
     this.sideSun.color.copy(this.sun.color);
     this.sideSun.position.copy(this.sideSun.target.position).addScaledVector(sideDir, 14);
 
+    if (this.design.style === "illustrated") {
+      // Daylight from the window by day; a cool, moonlit blue by night, as in a lofi illustration.
+      this.fill.color.copy(rgb(mixRGB([96, 110, 190], mixRGB(sky, [255, 255, 255], 0.5), day)));
+      this.fill.intensity = 0.9 + 1.4 * day;
+      this.hemi.color.copy(rgb(mixRGB([90, 96, 170], mixRGB(sky, [255, 255, 255], 0.4), day)));
+      this.hemi.groundColor.copy(rgb(mixRGB([70, 46, 70], [120, 96, 80], day)));
+      this.hemi.intensity = 0.55 + 0.35 * day;
+    }
     return [day, sky[0] / 255, sky[1] / 255, sky[2] / 255, strength, sideStrength, dir.x, dir.y, dir.z, side];
   }
 

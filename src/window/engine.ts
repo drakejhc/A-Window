@@ -8,6 +8,7 @@ import { CITIES, cityById, guessCity, type City } from "./cities";
 import { Environment, FALLBACK_WEATHER } from "./environment";
 import { atticRoom } from "./packs/attic-room";
 import { fjordCabin } from "./packs/fjord-cabin";
+import { cityView } from "./packs/city";
 import { lofiStudy } from "./packs/lofi-study";
 import { warmMinimal } from "./packs/warm-minimal";
 import type { AmbienceWeights, AnyRoom, AnyView } from "./types";
@@ -19,6 +20,7 @@ import { getMusic } from "../music";
 export const VIEWS: { id: string; name: string; pack: AnyView }[] = [
   { id: "rooftops", name: "Rooftops", pack: atticRoom },
   { id: "fjord", name: "Fjord", pack: fjordCabin },
+  { id: "city", name: "City skyline", pack: cityView },
 ];
 /** `three` names a rendered 3D room (see `three/`); `pack` is the 2D room shown where WebGL isn't available. */
 export const ROOMS: { id: string; name: string; pack: AnyRoom; three?: string }[] = [
@@ -26,6 +28,8 @@ export const ROOMS: { id: string; name: string; pack: AnyRoom; three?: string }[
   { id: "cabin3d", name: "Nordic cabin (3D)", pack: fjordCabin, three: "cabin" },
   { id: "japanese", name: "Japanese room (3D)", pack: warmMinimal, three: "japanese" },
   { id: "mediterranean", name: "Mediterranean (3D)", pack: warmMinimal, three: "mediterranean" },
+  { id: "lofi-desk", name: "Lofi desk (illustrated)", pack: lofiStudy, three: "lofi-desk" },
+  { id: "lofi-bedroom", name: "Cozy bedroom (illustrated)", pack: lofiStudy, three: "lofi-bedroom" },
   { id: "lofi", name: "Lofi study", pack: lofiStudy },
   { id: "minimal", name: "Warm minimal", pack: warmMinimal },
   { id: "attic", name: "Attic", pack: atticRoom },

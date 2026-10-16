@@ -33,7 +33,7 @@ export const japaneseRoom: Design = {
 
     // A fine lattice window.
     windowFrame(scene, opening, pale, 0.08, 0.04, 6, 3);
-    box(scene, opening.w + 0.1, 0.03, 0.22, pale, 0, opening.sill - 0.015, -0.04);
+    box(scene, opening.w + 0.1, 0.03, 0.22, pale, 0, opening.sill - 0.003, -0.04);
 
     // Shoji screens, slid open to either side of the window.
     const paperMat = new THREE.MeshStandardMaterial({ map: toTexture(paper()), roughness: 0.9, emissive: rgb([255, 244, 222]), emissiveIntensity: 0 });

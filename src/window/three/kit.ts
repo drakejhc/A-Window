@@ -9,6 +9,17 @@ import type { RGB } from "../util";
 
 export const mat = (c: RGB, o: THREE.MeshStandardMaterialParameters = {}) => new THREE.MeshStandardMaterial({ color: rgb(c), roughness: 0.7, ...o });
 
+let gradient: THREE.DataTexture | null = null;
+/** A flat, illustrated material: a few steps of light and shadow instead of smooth shading. */
+export function toon(c: RGB, o: THREE.MeshToonMaterialParameters = {}) {
+  if (!gradient) {
+    gradient = new THREE.DataTexture(new Uint8Array([84, 128, 172, 216, 255]), 5, 1, THREE.RedFormat);
+    gradient.minFilter = gradient.magFilter = THREE.NearestFilter;
+    gradient.needsUpdate = true;
+  }
+  return new THREE.MeshToonMaterial({ color: rgb(c), gradientMap: gradient, ...o });
+}
+
 /** Adds a mesh that casts and receives shadows. */
 export function solid(parent: THREE.Object3D, geo: THREE.BufferGeometry, m: THREE.Material | THREE.Material[], x = 0, y = 0, z = 0) {
   const mesh = new THREE.Mesh(geo, m);

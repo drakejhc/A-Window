@@ -27,7 +27,7 @@ export const listeningRoom: Design = {
     const frame = mat([40, 36, 32], { roughness: 0.45 });
     windowFrame(scene, opening, frame, 0.17);
     // Interior sill.
-    box(scene, opening.w + 0.12, 0.035, 0.26, mat([226, 216, 200], { roughness: 0.6 }), 0, opening.sill - 0.0175, -0.07);
+    box(scene, opening.w + 0.12, 0.035, 0.26, mat([226, 216, 200], { roughness: 0.6 }), 0, opening.sill - 0.005, -0.07);
     const oak = mat([255, 255, 255], { map: toTexture(wood([196, 156, 112], 21, 0, 512, 64)), roughness: 0.55 });
     blinds(scene, opening, oak, 12, -0.06);
     // Skirting.
