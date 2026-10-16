@@ -39,24 +39,35 @@ export type AmbienceWeights = {
   birds: number;
 };
 
-/**
- * A window pack draws what makes a scene its own. The renderer handles the sky, sun, moon, clouds,
- * falling weather and the glass for every pack. In open mode only drawLandscape and drawForeground run.
- */
-export interface WindowPack<D> {
+/** The view outside: drawn inside the glass. The renderer adds sky, sun, moon, clouds and weather around it. */
+export interface ViewPack<D> {
   id: string;
   name: string;
   ambience: AmbienceWeights;
   build(g: Geom, rng: Rng): D;
-  /** Wall behind everything, drawn first (framed mode only). */
-  drawRoom(ctx: CanvasRenderingContext2D, env: FrameEnv, g: Geom, d: D, P: Painter): void;
   /** The view, clipped to the glass. */
   drawLandscape(ctx: CanvasRenderingContext2D, env: FrameEnv, g: Geom, d: D, P: Painter): void;
   /** Things close to the glass, still clipped. */
   drawForeground(ctx: CanvasRenderingContext2D, env: FrameEnv, g: Geom, d: D, P: Painter): void;
-  /** Frame, sill and objects in the room, drawn last (framed mode only). */
+}
+
+/** The room around the window (framed mode only). Its data may include `turntable: {x, y}`, the spot on the
+ *  sill or desk where the record player stands while music plays. */
+export interface RoomPack<D> {
+  id: string;
+  name: string;
+  ambience: AmbienceWeights;
+  build(g: Geom, rng: Rng): D;
+  /** Walls and everything behind the window, drawn first. */
+  drawRoom(ctx: CanvasRenderingContext2D, env: FrameEnv, g: Geom, d: D, P: Painter): void;
+  /** Frame, sill or desk, and the things on it, drawn last. */
   drawInterior(ctx: CanvasRenderingContext2D, env: FrameEnv, g: Geom, d: D, P: Painter): void;
 }
 
+/** A scene that draws both halves (the original attic and cabin). */
+export type WindowPack<D> = ViewPack<D> & RoomPack<D>;
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the renderer only passes a pack's data back to that pack
-export type AnyPack = WindowPack<any>;
+export type AnyView = ViewPack<any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type AnyRoom = RoomPack<any>;

@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { localParts } from "@/window/astro";
-import { PACKS } from "@/window/engine";
+import { ROOMS, VIEWS } from "@/window/engine";
 import { PRESETS } from "@/window/weather";
 
 import { CityPicker } from "./CityPicker";
@@ -42,6 +42,17 @@ export function Dock({ sheetOpen, onToggleSheet, focusing, onFocus, onSettings }
       {open === "adjust" && (
         <section className="adjust" aria-label="Adjust the window">
           <h2>Adjust the window</h2>
+          <label className="field">
+            <span>The view outside</span>
+            <select value={snap.prefs.view} onChange={(e) => engine.setScene({ view: e.target.value })}>
+              <option value="auto">Auto (a fjord in the far north and south)</option>
+              {VIEWS.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="field">
             <span>Weather</span>
             <select value={snap.prefs.preset ?? "live"} onChange={(e) => engine.setPreset(e.target.value === "live" ? null : Number(e.target.value))}>
@@ -88,14 +99,14 @@ export function Dock({ sheetOpen, onToggleSheet, focusing, onFocus, onSettings }
           <Icon name="pin" />
           {snap.city.name}
         </button>
-        <label className="sr" htmlFor="scene">
-          Scene
+        <label className="sr" htmlFor="room">
+          Room
         </label>
-        <select id="scene" className="ctl" value={snap.prefs.scene} onChange={(e) => engine.setScene(e.target.value)}>
-          <option value="auto">Auto scene</option>
-          {PACKS.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
+        <select id="room" className="ctl" value={snap.prefs.room} onChange={(e) => engine.setScene({ room: e.target.value })}>
+          <option value="auto">Auto room</option>
+          {ROOMS.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
             </option>
           ))}
         </select>

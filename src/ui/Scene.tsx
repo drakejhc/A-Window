@@ -15,7 +15,7 @@ export function Scene({ align, framed = true }: { align: number; framed?: boolea
     const canvas = ref.current;
     if (!canvas) return;
     const engine = getWindowEngine();
-    const r = new Renderer(canvas, engine.getSnapshot().pack, framed ? { framed: true, align, parallax: 1 } : { framed: false, parallax: 0.3, maxFps: 30 });
+    const r = new Renderer(canvas, engine.getSnapshot().view, engine.getSnapshot().room, framed ? { framed: true, align, parallax: 1 } : { framed: false, parallax: 0.3, maxFps: 30 });
     renderer.current = r;
     const detach = engine.attach(r);
     const resize = new ResizeObserver(() => r.resize());
@@ -32,7 +32,7 @@ export function Scene({ align, framed = true }: { align: number; framed?: boolea
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => renderer.current?.setPack(snap.pack), [snap.pack]);
+  useEffect(() => renderer.current?.setScene(snap.view, snap.room), [snap.view, snap.room]);
   useEffect(() => renderer.current?.setAlign(align), [align]);
 
   return <canvas ref={ref} className="scene" role="img" aria-label={`An illustrated window in ${snap.city.name}, showing the weather and time of day there`} />;

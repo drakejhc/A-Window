@@ -8,18 +8,31 @@ import { CITIES, cityById, guessCity, type City } from "./cities";
 import { Environment, FALLBACK_WEATHER } from "./environment";
 import { atticRoom } from "./packs/attic-room";
 import { fjordCabin } from "./packs/fjord-cabin";
-import type { AnyPack } from "./types";
+import { lofiStudy } from "./packs/lofi-study";
+import { warmMinimal } from "./packs/warm-minimal";
+import type { AmbienceWeights, AnyRoom, AnyView } from "./types";
 import { describe, fetchCurrent, type Weather } from "./weather";
 import { isWallpaper } from "../desktop";
 import { getMusic } from "../music";
 
-export const PACKS: AnyPack[] = [atticRoom, fjordCabin];
+/** What's outside the window, and the room you're in. Any view goes with any room. */
+export const VIEWS: { id: string; name: string; pack: AnyView }[] = [
+  { id: "rooftops", name: "Rooftops", pack: atticRoom },
+  { id: "fjord", name: "Fjord", pack: fjordCabin },
+];
+export const ROOMS: { id: string; name: string; pack: AnyRoom }[] = [
+  { id: "lofi", name: "Lofi study", pack: lofiStudy },
+  { id: "minimal", name: "Warm minimal", pack: warmMinimal },
+  { id: "attic", name: "Attic", pack: atticRoom },
+  { id: "cabin", name: "Log cabin", pack: fjordCabin },
+];
 export type WeatherStatus = "loading" | "live" | "stale" | "offline" | "preset";
-export type WindowPrefs = { city: string; sound: boolean; volume: number; preset: number | null; scene: string; custom?: City | undefined };
+export type WindowPrefs = { city: string; sound: boolean; volume: number; preset: number | null; view: string; room: string; custom?: City | undefined };
 export type WindowSnapshot = {
   city: City;
   prefs: WindowPrefs;
-  pack: AnyPack;
+  view: AnyView;
+  room: AnyRoom;
   status: WeatherStatus;
   weather: Weather;
   /** Milliseconds the scene is shifted from the real time, for previewing dusk or night. */
@@ -38,16 +51,21 @@ function loadPrefs(): WindowPrefs {
     sound: false,
     volume: 0.6,
     preset: null,
-    scene: "auto",
+    view: "auto",
+    room: "auto",
   };
   try {
-    const p = JSON.parse(window.localStorage.getItem(PREFS_KEY) ?? "{}") as Partial<WindowPrefs>;
+    const p = JSON.parse(window.localStorage.getItem(PREFS_KEY) ?? "{}") as Partial<WindowPrefs> & { scene?: string };
+    // Earlier versions had one "scene" covering both halves.
+    if (p.scene === "attic-room") Object.assign(p, { view: "rooftops", room: "attic" });
+    if (p.scene === "fjord-cabin") Object.assign(p, { view: "fjord", room: "cabin" });
     return {
       city: cityById(p.city) || p.custom?.id === p.city ? p.city! : fallback.city,
       sound: typeof p.sound === "boolean" ? p.sound : fallback.sound,
       volume: typeof p.volume === "number" ? Math.min(1, Math.max(0, p.volume)) : fallback.volume,
       preset: typeof p.preset === "number" ? p.preset : null,
-      scene: PACKS.some((k) => k.id === p.scene) ? p.scene! : "auto",
+      view: VIEWS.some((v) => v.id === p.view) ? p.view! : "auto",
+      room: ROOMS.some((r) => r.id === p.room) ? p.room! : "auto",
       custom: p.custom && typeof p.custom.lat === "number" && typeof p.custom.tz === "string" ? p.custom : undefined,
     };
   } catch {
@@ -55,9 +73,15 @@ function loadPrefs(): WindowPrefs {
   }
 }
 
-/** Auto puts far-north and far-south cities in the cabin, everywhere else in the attic. */
-export function packFor(scene: string, city: City): AnyPack {
-  return PACKS.find((p) => p.id === scene) ?? (Math.abs(city.lat) >= 58 ? fjordCabin : atticRoom);
+/** Auto looks out over a fjord from a log cabin in the far north and south, and over rooftops from a lofi study
+ *  everywhere else. */
+export function sceneFor(prefs: Pick<WindowPrefs, "view" | "room">, city: City) {
+  const north = Math.abs(city.lat) >= 58;
+  const view = VIEWS.find((v) => v.id === prefs.view)?.pack ?? (north ? fjordCabin : atticRoom);
+  const room = ROOMS.find((r) => r.id === prefs.room)?.pack ?? (north ? fjordCabin : lofiStudy);
+  // Weather sounds come from outside; the fire and its crackle belong to the room.
+  const ambience: AmbienceWeights = { ...view.ambience, fire: room.ambience.fire };
+  return { view, room, ambience };
 }
 
 export class WindowEngine {
@@ -152,8 +176,8 @@ export class WindowEngine {
     if (this.tickables.size) void this.loadWeather();
   }
 
-  setScene(scene: string) {
-    this.prefs = { ...this.prefs, scene };
+  setScene(patch: Partial<Pick<WindowPrefs, "view" | "room">>) {
+    this.prefs = { ...this.prefs, ...patch };
     this.save();
   }
 
@@ -253,12 +277,13 @@ export class WindowEngine {
   }
 
   private publish() {
-    const pack = packFor(this.prefs.scene, this.city);
-    this.audio.setWeights(pack.ambience);
+    const { view, room, ambience } = sceneFor(this.prefs, this.city);
+    this.audio.setWeights(ambience);
     this.snapshot = {
       city: this.city,
       prefs: this.prefs,
-      pack,
+      view,
+      room,
       status: this.prefs.preset !== null ? "preset" : this.status,
       weather: this.effectiveWeather(),
       shift: this.shift,

@@ -1,7 +1,7 @@
 /** Owns one canvas and draws the parts every window shares: sky, stars, sun and moon, clouds, falling weather,
  *  lightning and the glass. A window pack draws the room and the view. */
 import type { Environment } from "./environment";
-import type { AnyPack, FrameEnv, Geom, Painter } from "./types";
+import type { AnyRoom, AnyView, FrameEnv, Geom, Painter } from "./types";
 import { clamp, makeRng, mixRGB, rgba, smooth, type RGB, type Rng } from "./util";
 
 export type RendererOptions = {
@@ -41,15 +41,15 @@ function computeGeom(W: number, H: number, opts: RendererOptions): Geom {
     w = Math.min(W * 0.78, 520);
     h = Math.min(H * 0.56, w * 1.45);
   } else {
-    h = Math.min(H * 0.6, 720);
-    w = Math.min(W * 0.56, h * 1.32);
+    h = Math.min(H * 0.64, 760);
+    w = Math.min(W * 0.62, h * 1.38);
   }
   w = Math.round(w);
   h = Math.round(h);
   const align = portrait ? 0.5 : (opts.align ?? 0.5);
   const x = Math.round(Math.min(Math.max(W * align - w / 2, W * 0.04), W - w - W * 0.04));
   // Low enough to clear the city readout in the top-left corner.
-  const y = Math.round(portrait ? Math.max(H * 0.12, 90) : Math.max(H * 0.18, 162));
+  const y = Math.round(portrait ? Math.max(H * 0.12, 90) : Math.max(H * 0.15, 138));
   const frame = Math.max(10, Math.round(w * 0.032));
   const mull = Math.max(6, Math.round(frame * 0.55));
   const mx = x + w / 2,
@@ -134,7 +134,8 @@ export class Renderer {
   readonly reduced: boolean;
   private ctx: CanvasRenderingContext2D;
   private geom!: Geom;
-  private data: unknown;
+  private viewData: unknown;
+  private roomData: unknown;
   private dpr = 1;
   private pointer = { x: 0, y: 0, tx: 0, ty: 0 };
   private dropSprite = makeSprite(false);
@@ -155,7 +156,8 @@ export class Renderer {
 
   constructor(
     private canvas: HTMLCanvasElement,
-    private pack: AnyPack,
+    private view: AnyView,
+    private room: AnyRoom,
     private opts: RendererOptions,
   ) {
     this.ctx = canvas.getContext("2d", { alpha: false })!;
@@ -164,10 +166,11 @@ export class Renderer {
     this.resize();
   }
 
-  /** Swaps the scene; the sky, weather and glass carry on. */
-  setPack(pack: AnyPack) {
-    if (pack === this.pack) return;
-    this.pack = pack;
+  /** Swaps the view or the room; the sky, weather and glass carry on. */
+  setScene(view: AnyView, room: AnyRoom) {
+    if (view === this.view && room === this.room) return;
+    this.view = view;
+    this.room = room;
     this.resize();
   }
 
@@ -240,7 +243,9 @@ export class Renderer {
     this.beads = [];
     this.sliders = [];
     this.trails = [];
-    this.data = this.pack.build(g, makeRng(7));
+    this.viewData = this.view.build(g, makeRng(7));
+    // A scene that is both the view and the room shares one set of data.
+    this.roomData = (this.room as unknown) === (this.view as unknown) ? this.viewData : this.room.build(g, makeRng(11));
   }
 
   private spawnRain(initial: boolean, rng: Rng = Math.random): Drop {
@@ -294,7 +299,7 @@ export class Renderer {
     this.pointer.y += (this.pointer.ty - this.pointer.y) * k;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
 
-    if (g.framed) this.pack.drawRoom(ctx, env, g, this.data, this.P);
+    if (g.framed) this.room.drawRoom(ctx, env, g, this.roomData, this.P);
     ctx.save();
     ctx.beginPath();
     ctx.rect(g.x, g.y, g.w, g.h);
@@ -304,11 +309,11 @@ export class Renderer {
     this.drawAurora(env);
     this.drawCelestial(env);
     this.drawClouds(env);
-    this.pack.drawLandscape(ctx, env, g, this.data, this.P);
+    this.view.drawLandscape(ctx, env, g, this.viewData, this.P);
     this.drawFog(env);
     this.drawDrifters(env);
     this.drawPrecip(env);
-    this.pack.drawForeground(ctx, env, g, this.data, this.P);
+    this.view.drawForeground(ctx, env, g, this.viewData, this.P);
     if (env.flash > 0.01) {
       ctx.fillStyle = rgba([225, 230, 255], env.flash * 0.55);
       ctx.fillRect(g.x, g.y, g.w, g.h);
@@ -317,7 +322,7 @@ export class Renderer {
     this.drawGlass(env);
     ctx.restore();
     if (g.framed) {
-      this.pack.drawInterior(ctx, env, g, this.data, this.P);
+      this.room.drawInterior(ctx, env, g, this.roomData, this.P);
       this.drawTurntable(env);
     }
   }
@@ -325,7 +330,7 @@ export class Renderer {
   /** A record player on the sill while music plays: the album art spins on the label, and the arm lowers. */
   private drawTurntable(env: FrameEnv) {
     const m = env.music;
-    const spot = (this.data as { turntable?: { x: number; y: number } } | null)?.turntable;
+    const spot = (this.roomData as { turntable?: { x: number; y: number } } | null)?.turntable;
     if (m.on < 0.02 || !spot) return;
     const { ctx, geom: g } = this, s = g.s;
     const day = Math.min(1, (env.ambient[0] + env.ambient[1] + env.ambient[2]) / 3);

@@ -39,8 +39,9 @@ npm test
 - **Replan** (`R`) moves tasks that fell behind into the free time left today.
 - **Focus** (`F`) works on the block happening now, or the next one, or a free session when the day is clear.
   Focused minutes are recorded on the block. `Space` pauses and `Esc` exits.
-- **The window**: search for any city and choose a scene in the bottom bar, and turn sound on. *Adjust* lets you pick
-  the weather by hand, preview another time of day, and set the volume.
+- **The window**: search for any city and choose a room in the bottom bar (Lofi study, Warm minimal, Attic, Log cabin),
+  and turn sound on. *Adjust* picks the view outside (rooftops or a fjord), the weather, a preview of another time of
+  day, and the volume. Any room goes with any view.
 - **Repeating events**: an event can repeat every day, every weekday or every week. Delete one day or the whole series.
 - **Settings** (the gear): °C/°F, 12/24-hour clock, the first day of the week, reminders, layout, backups, and in the
   desktop app the live wallpaper, open at login and what's playing.
@@ -69,11 +70,13 @@ npm test
 The window engine (`src/window/engine.ts`) runs one clock, weather feed and soundscape and knows nothing
 about the planner. The planner knows nothing about the window. `App.tsx` is the only place they meet.
 
-## Scenes
+## Rooms and views
 
-A scene ("window pack") draws only what makes it its own; the renderer handles the sky, weather and glass.
-See `src/window/types.ts` for the `WindowPack` interface, and `packs/attic-room.ts` and `packs/fjord-cabin.ts`
-for examples. Add a new pack to `PACKS` in `engine.ts` and it appears in the scene picker.
+The scene has two halves. A **view** (`ViewPack`) draws the landscape inside the glass; a **room** (`RoomPack`) draws
+the walls around the window and the desk or sill in front of it. The renderer handles the sky, weather and glass in
+between, so any room works with any view. See `src/window/types.ts` for the interfaces, `packs/lofi-study.ts` and
+`packs/warm-minimal.ts` for rooms, and `packs/props.ts` for the shared cat, mug, plant, books and fairy lights. Add a
+pack to `VIEWS` or `ROOMS` in `engine.ts` and it appears in the pickers.
 
 Weather comes from [Open-Meteo](https://open-meteo.com) (free, no key) and refreshes every 15 minutes.
 Your plan is stored in this browser or app only (localStorage); there is no account.
