@@ -81,7 +81,7 @@ function loadPrefs(): WindowPrefs {
     // Earlier versions had one "scene" covering both halves, and some rooms have since been retired.
     if (p.scene === "attic-room") Object.assign(p, { view: "rooftops", room: "attic" });
     if (p.scene === "fjord-cabin") Object.assign(p, { view: "fjord", room: "cabin" });
-    if (p.room && ROOM_ALIASES[p.room]) p.room = ROOM_ALIASES[p.room];
+    if (p.room && ROOM_ALIASES[p.room]) p.room = ROOM_ALIASES[p.room]!;
     const known = !!p.city && (!!cityById(p.city) || p.custom?.id === p.city);
     return {
       city: known ? p.city! : fallback.city,
