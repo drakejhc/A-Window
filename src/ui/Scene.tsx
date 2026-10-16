@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import type { AnyRoom, AnyView } from "@/window/types";
 
 import { getWindowEngine } from "@/window/engine";
 import { Renderer } from "@/window/renderer";
@@ -13,8 +15,30 @@ type Props = { align: number; framed?: boolean };
 export function Scene({ align, framed = true }: Props) {
   const { snap } = useWindow();
   const [failed, setFailed] = useState<string | null>(null);
-  if (framed && snap.room3d && failed !== snap.room3d) return <Scene3D key={snap.room3d} design={snap.room3d} align={align} onFail={() => setFailed(snap.room3d)} />;
-  return <Scene2D align={align} framed={framed} />;
+  // Changing room or view fades through a dark curtain: the new scene is built behind it (which can take a moment)
+  // and the curtain lifts once its first frame is drawn, instead of freezing on a black or half-built screen.
+  const [shown, setShown] = useState({ view: snap.view, room: snap.room, room3d: snap.room3d });
+  const [curtain, setCurtain] = useState(false);
+  const same = shown.view === snap.view && shown.room === snap.room && shown.room3d === snap.room3d;
+  useEffect(() => {
+    if (same) return;
+    setCurtain(true);
+    const t = window.setTimeout(() => setShown({ view: snap.view, room: snap.room, room3d: snap.room3d }), 300);
+    return () => window.clearTimeout(t);
+  }, [same, snap.view, snap.room, snap.room3d]);
+  const ready = useCallback(() => requestAnimationFrame(() => requestAnimationFrame(() => setCurtain(false))), []);
+  const scene =
+    framed && shown.room3d && failed !== shown.room3d ? (
+      <Scene3D key={shown.room3d} design={shown.room3d} view={shown.view} align={align} onReady={ready} onFail={() => setFailed(shown.room3d)} />
+    ) : (
+      <Scene2D align={align} framed={framed} view={shown.view} room={shown.room} onReady={ready} />
+    );
+  return (
+    <>
+      {scene}
+      <div className="scene-curtain" data-on={curtain || undefined} aria-hidden />
+    </>
+  );
 }
 
 const label = (city: string) => `An illustrated window in ${city}, showing the weather and time of day there`;
@@ -27,7 +51,7 @@ function usePointer(target: React.RefObject<{ setPointer(x: number, y: number): 
   }, [target]);
 }
 
-function Scene2D({ align, framed }: { align: number; framed: boolean }) {
+function Scene2D({ align, framed, view, room, onReady }: { align: number; framed: boolean; view: AnyView; room: AnyRoom; onReady: () => void }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const renderer = useRef<Renderer | null>(null);
   const { snap } = useWindow();
@@ -37,7 +61,7 @@ function Scene2D({ align, framed }: { align: number; framed: boolean }) {
     const canvas = ref.current;
     if (!canvas) return;
     const engine = getWindowEngine();
-    const r = new Renderer(canvas, engine.getSnapshot().view, engine.getSnapshot().room, framed ? { framed: true, align, parallax: 1 } : { framed: false, parallax: 0.3, maxFps: 30 });
+    const r = new Renderer(canvas, view, room, framed ? { framed: true, align, parallax: 1 } : { framed: false, parallax: 0.3, maxFps: 30 });
     renderer.current = r;
     const detach = engine.attach(r);
     const resize = new ResizeObserver(() => r.resize());
@@ -51,13 +75,16 @@ function Scene2D({ align, framed }: { align: number; framed: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => renderer.current?.setScene(snap.view, snap.room), [snap.view, snap.room]);
+  useEffect(() => {
+    renderer.current?.setScene(view, room);
+    onReady();
+  }, [view, room, onReady]);
   useEffect(() => renderer.current?.setAlign(align), [align]);
 
   return <canvas ref={ref} className="scene" role="img" aria-label={label(snap.city.name)} />;
 }
 
-function Scene3D({ design, align, onFail }: { design: string; align: number; onFail: () => void }) {
+function Scene3D({ design, view: viewPack, align, onReady, onFail }: { design: string; view: AnyView; align: number; onReady: () => void; onFail: () => void }) {
   const view = useRef<HTMLCanvasElement>(null);
   const roomCanvas = useRef<HTMLCanvasElement>(null);
   const glow = useRef<HTMLCanvasElement>(null);
@@ -76,10 +103,10 @@ function Scene3D({ design, align, onFail }: { design: string; align: number; onF
         const d = DESIGNS[design];
         if (!live) return;
         if (!d) throw new Error(`No 3D room "${design}"`);
-        const r = new Room3D(layers, d, engine.getSnapshot().view, { align });
+        const r = new Room3D(layers, d, viewPack, { align });
         room.current = r;
-        (window as { __room3d?: Room3D }).__room3d = r;
         const detach = engine.attach(r);
+        onReady();
         const resize = new ResizeObserver(() => r.resize());
         resize.observe(layers.room);
         cleanup = () => {
@@ -101,7 +128,11 @@ function Scene3D({ design, align, onFail }: { design: string; align: number; onF
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => room.current?.setView(snap.view), [snap.view]);
+  useEffect(() => {
+    if (!room.current) return;
+    room.current.setView(viewPack);
+    onReady();
+  }, [viewPack, onReady]);
   useEffect(() => room.current?.setAlign(align), [align]);
 
   return (
