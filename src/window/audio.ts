@@ -107,12 +107,13 @@ export class Ambience {
     gust.start();
   }
 
-  /** Four seconds of stereo noise that loops without a seam. */
+  /** Twelve seconds of stereo noise that loops without a seam: the end is cross-faded into the start over a
+   *  second at equal power, so the level never dips at the join. */
   private noiseBuffer(brown: boolean) {
     const ctx = this.ctx!,
       sr = ctx.sampleRate,
-      len = sr * 4,
-      fade = 4096;
+      len = sr * 12,
+      fade = sr;
     const buf = ctx.createBuffer(2, len, sr);
     for (let ch = 0; ch < 2; ch++) {
       const raw = new Float32Array(len + fade);
@@ -126,17 +127,28 @@ export class Ambience {
       }
       const out = buf.getChannelData(ch);
       out.set(raw.subarray(0, len));
-      for (let i = 0; i < fade; i++) out[i] = raw[i]! * (i / fade) + raw[len + i]! * (1 - i / fade);
+      for (let i = 0; i < fade; i++) {
+        const u = (i / fade) * (Math.PI / 2);
+        out[i] = raw[i]! * Math.sin(u) + raw[len + i]! * Math.cos(u);
+      }
     }
     return buf;
   }
 
   private bed(buffer: AudioBuffer, chain: [BiquadFilterType, number, number][]): Bed {
     const ctx = this.ctx!;
-    const src = ctx.createBufferSource();
-    src.buffer = buffer;
-    src.loop = true;
-    let node: AudioNode = src;
+    // Two copies of the loop, offset and at slightly different speeds, so its repeat is never heard.
+    const mix = ctx.createGain();
+    mix.gain.value = Math.SQRT1_2;
+    for (const rate of [1, 0.971]) {
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      src.loop = true;
+      src.playbackRate.value = rate;
+      src.connect(mix);
+      src.start(0, Math.random() * buffer.duration);
+    }
+    let node: AudioNode = mix;
     const filters = chain.map(([type, freq, q]) => {
       const f = ctx.createBiquadFilter();
       f.type = type;
@@ -149,7 +161,6 @@ export class Ambience {
     const gain = ctx.createGain();
     gain.gain.value = 0;
     node.connect(gain).connect(this.master);
-    src.start(0, Math.random() * buffer.duration);
     return { gain, filters };
   }
 
