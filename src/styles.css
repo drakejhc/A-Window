@@ -11,6 +11,7 @@
   --hover: rgba(239, 232, 220, 0.08);
   --field: rgba(239, 232, 220, 0.05);
   --glass: rgba(16, 18, 25, 0.64);
+  --scene-rgb: 120, 128, 160;
   --glass-strong: rgba(14, 16, 22, 0.82);
   --amber: #e9b872;
   --amber-ink: #1d1509;
@@ -486,9 +487,13 @@ input[type="range"], input[type="checkbox"] { accent-color: var(--amber); }
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 24px;
-  background: rgba(14, 16, 22, 0.58);
-  backdrop-filter: blur(28px) saturate(1.2);
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.4);
+  /* Frosted glass in the room's own light: the scene glows through, tinted by its current colour (set by App). */
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(var(--scene-rgb), 0.16), transparent 65%),
+    linear-gradient(rgba(var(--scene-rgb), 0.05), rgba(var(--scene-rgb), 0.05)),
+    rgba(12, 14, 20, 0.44);
+  backdrop-filter: blur(24px) saturate(1.4);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
   opacity: 0;
   transform: scale(0.985) translateY(6px);
   pointer-events: none;

@@ -18,6 +18,7 @@ import { desktop } from "@/desktop";
 import { makeBackup } from "@/backup";
 import { useMusic, watchMusic } from "@/music";
 import { followSaver } from "@/power";
+import { mixRGB } from "@/window/util";
 import { SettingsContext, useSettingsState } from "@/settings";
 import { NowPlaying } from "@/ui/NowPlaying";
 import { SettingsPanel } from "@/ui/SettingsPanel";
@@ -291,6 +292,17 @@ export function App() {
   }, [state]);
 
   useEffect(() => followSaver(settings.saver, engine), [settings.saver, engine]);
+
+  // The planner's glass takes on the scene's current colour: the sky, warmed by the lamp when it's on.
+  useEffect(() => {
+    const update = () => {
+      const e = engine.env, c = mixRGB(e.sky.bottom, e.lampColor, Math.min(1, e.lamp * 0.6));
+      document.documentElement.style.setProperty("--scene-rgb", c.map(Math.round).join(", "));
+    };
+    update();
+    const t = window.setInterval(update, 4000);
+    return () => window.clearInterval(t);
+  }, [engine]);
 
   // Music from Spotify or Apple Music (desktop app): watch it, and turn the ambience down while it plays.
   useEffect(() => watchMusic(settings.music), [settings.music]);

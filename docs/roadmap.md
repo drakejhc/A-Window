@@ -14,7 +14,8 @@
 **Smaller issues to fix**
 - [x] The bed is the bedroom's largest and weakest shape. It now has quilting that follows its humps and a
   knitted terracotta throw draped over its side, which catches the window light and the fire.
-- [ ] The planner darkens the whole scene evenly.
+- [x] The planner darkens the whole scene evenly. Its glass is now lighter frosted glass tinted by the scene's
+  current colour (sky warmed by the lamp), so the room glows through.
 - [ ] Very wide screens show the window small in the middle.
 - [ ] Big screens sit dark for seconds while a painted room paints.
 
