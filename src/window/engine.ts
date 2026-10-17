@@ -6,9 +6,6 @@ import { formatClock, localParts, nextSunEvents } from "./astro";
 import { Ambience } from "./audio";
 import { CITIES, cityById, guessCity, type City } from "./cities";
 import { Environment, FALLBACK_WEATHER } from "./environment";
-import { atticRoom } from "./packs/attic-room";
-import { fjordCabin } from "./packs/fjord-cabin";
-import { cityView } from "./packs/city";
 import { paintedCity } from "./packs/painted-city";
 import { paintedBedroom } from "./packs/painted-bedroom";
 import { paintedStudy } from "./packs/painted-study";
@@ -20,9 +17,6 @@ import { getMusic } from "../music";
 
 /** What's outside the window, and the room you're in. Any view goes with any room. */
 export const VIEWS: { id: string; name: string; pack: AnyView }[] = [
-  { id: "rooftops", name: "Rooftops", pack: atticRoom },
-  { id: "fjord", name: "Fjord", pack: fjordCabin },
-  { id: "city", name: "City skyline", pack: cityView },
   { id: "painted-city", name: "Painted city", pack: paintedCity },
   { id: "painted-valley", name: "Painted valley", pack: paintedValley },
 ];
@@ -32,9 +26,9 @@ export const ROOMS: { id: string; name: string; pack: AnyRoom; three?: string; v
   { id: "painted", name: "Midnight study (painted)", pack: paintedStudy, view: "painted-city" },
   { id: "painted-bedroom", name: "Cozy bedroom (painted)", pack: paintedBedroom, view: "painted-valley" },
   { id: "listening", name: "Listening room (3D)", pack: paintedStudy, three: "listening", view: "painted-city" },
-  { id: "cabin3d", name: "Nordic cabin (3D)", pack: paintedBedroom, three: "cabin" },
-  { id: "japanese", name: "Japanese room (3D)", pack: paintedStudy, three: "japanese" },
-  { id: "mediterranean", name: "Mediterranean (3D)", pack: paintedStudy, three: "mediterranean" },
+  { id: "cabin3d", name: "Nordic cabin (3D)", pack: paintedBedroom, three: "cabin", view: "painted-valley" },
+  { id: "japanese", name: "Japanese room (3D)", pack: paintedStudy, three: "japanese", view: "painted-city" },
+  { id: "mediterranean", name: "Mediterranean (3D)", pack: paintedStudy, three: "mediterranean", view: "painted-city" },
 ];
 export type WeatherStatus = "loading" | "live" | "stale" | "offline" | "preset";
 export type WindowPrefs = { city: string; sound: boolean; volume: number; preset: number | null; view: string; room: string; custom?: City | undefined };
@@ -56,6 +50,10 @@ type Tickable = { tick: (env: Environment, dt: number) => void };
 const PREFS_KEY = "a-window:window-v1";
 const REFRESH_MS = 15 * 60_000;
 const SEASON_TEMP = { winter: 1, spring: 13, summer: 24, autumn: 14 } as const;
+
+/** Views that were retired (drawn in a flat style that clashed with the painted rooms), and their painted
+ *  replacements. */
+const VIEW_ALIASES: Record<string, string> = { rooftops: "painted-city", city: "painted-city", fjord: "painted-valley" };
 
 /** Rooms that were retired, and the room that took each one's place. */
 const ROOM_ALIASES: Record<string, string> = {
@@ -82,6 +80,7 @@ function loadPrefs(): WindowPrefs {
     if (p.scene === "attic-room") Object.assign(p, { view: "rooftops", room: "attic" });
     if (p.scene === "fjord-cabin") Object.assign(p, { view: "fjord", room: "cabin" });
     if (p.room && ROOM_ALIASES[p.room]) p.room = ROOM_ALIASES[p.room]!;
+    if (p.view && VIEW_ALIASES[p.view]) p.view = VIEW_ALIASES[p.view]!;
     const known = !!p.city && (!!cityById(p.city) || p.custom?.id === p.city);
     return {
       city: known ? p.city! : fallback.city,
@@ -109,12 +108,12 @@ export function autoRoom(city: City) {
   return "listening";
 }
 
-/** Auto looks out over a fjord in the far north and south and over rooftops elsewhere, from the room `autoRoom`
- *  picks. */
+/** Auto shows each room's own view, from the room `autoRoom` picks (or the valley in the far north and south and
+ *  the city elsewhere, for a room without one). */
 export function sceneFor(prefs: Pick<WindowPrefs, "view" | "room">, city: City) {
   const north = Math.abs(city.lat) >= 58;
   const entry = ROOMS.find((r) => r.id === prefs.room) ?? ROOMS.find((r) => r.id === autoRoom(city))!;
-  const auto = VIEWS.find((v) => v.id === entry.view)?.pack ?? (north ? fjordCabin : atticRoom);
+  const auto = VIEWS.find((v) => v.id === entry.view)?.pack ?? (north ? paintedValley : paintedCity);
   const view = VIEWS.find((v) => v.id === prefs.view)?.pack ?? auto;
   const room = entry.pack;
   // Weather sounds come from outside; the fire and its crackle belong to the room.

@@ -7,8 +7,9 @@
   dominant peak, rugged ridgelines, shadowed faces and a ragged snowline, in front of a hazy far range.
 - [x] The painted rooms look flat by day: no sunlight comes into the room, and golden hour isn't golden.
   Both painted rooms now have window light and a warm golden hour (`packs/window-light.ts`).
-- [ ] The art styles clash. The 3D rooms look out on a flat cartoon city, and the older views don't match the
-  painted rooms.
+- [x] The art styles clash. The 3D rooms look out on a flat cartoon city, and the older views don't match the
+  painted rooms. Every room now has a painted view, and the drawn rooftops, fjord and city views are retired
+  (saved choices move to the nearest painted view).
 
 **Smaller issues to fix**
 - [ ] The bed is the bedroom's largest and weakest shape.

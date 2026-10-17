@@ -35,12 +35,12 @@ function matrix() {
     for (const [t, hhmm] of Object.entries(TIMES))
       for (const [w, code] of Object.entries(WEATHER)) shots.push({ name: `${room}--${t}--${w}`, room, view, time: hhmm, preset: code });
   // Any room with any view: the painted rooms swapped, and the older drawn views.
-  for (const [room, view] of [["painted", "painted-valley"], ["painted-bedroom", "painted-city"], ["painted", "rooftops"], ["painted", "fjord"], ["painted", "city"]])
+  for (const [room, view] of [["painted", "painted-valley"], ["painted-bedroom", "painted-city"]])
     for (const t of ["midday", "dusk"]) shots.push({ name: `${room}+${view}--${t}--clear`, room, view, time: TIMES[t], preset: 0 });
   // The 3D rooms (slow to render without a GPU): a day, an evening and a wet night each.
   for (const room of THREE)
     for (const [t, w] of [["midday", "clear"], ["dusk", "clear"], ["night", "rain"]])
-      shots.push({ name: `${room}--${t}--${w}`, room, view: room === "listening" ? "painted-city" : "city", time: TIMES[t], preset: WEATHER[w], three: true });
+      shots.push({ name: `${room}--${t}--${w}`, room, view: "auto", time: TIMES[t], preset: WEATHER[w], three: true });
   // Modes and sizes.
   for (const { room, view } of PAINTED) {
     shots.push({ name: `${room}--planner--golden`, room, view, time: TIMES.golden, preset: 2, keys: ["p"] });

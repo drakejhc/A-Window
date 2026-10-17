@@ -44,7 +44,7 @@ npm test
   and *Cozy bedroom (painted)* are 2D paintings instead: brushwork, hand-drawn edges and grain,
   painted once in night, day and lamplight and blended live, looking out on a *Painted city* and a *Painted valley*; *Auto* picks one to suit the city (the cabin in the far north and
   south, the Japanese room in East Asia, the Mediterranean room where it's warm, the Listening room elsewhere). The
-  painted rooms are lighter on the computer than the 3D ones. Turn sound on for rain, fire, birds and the city. *Adjust* picks the view outside (rooftops, a fjord or a city skyline), the weather, a preview of another time of
+  painted rooms are lighter on the computer than the 3D ones. Turn sound on for rain, fire, birds and the city. *Adjust* picks the view outside (the painted city or the painted valley), the weather, a preview of another time of
   day, and the volume. Any room goes with any view.
 - **Repeating events**: an event can repeat every day, every weekday or every week. Delete one day or the whole series.
 - **Settings** (the gear): °C/°F, 12/24-hour clock, the first day of the week, reminders, layout, backups, and in the
