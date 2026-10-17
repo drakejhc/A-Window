@@ -36,10 +36,19 @@ export function FocusCard({ target, now, onChime, onExit, onComplete }: Props) {
       if (phase === "focus") focused.current += Math.min(90, Math.max(0, (t - last) / 1000));
       last = t;
     };
+    // The countdown follows the clock too, not the number of ticks: a background window's timers fire late, and
+    // counting ticks made the timer fall behind.
+    let carry = 0, tick = Date.now();
     const id = window.setInterval(() => {
       accrue();
-      setLeft((s) => Math.max(0, s - 1));
-    }, 1000);
+      const t = Date.now();
+      carry += t - tick;
+      tick = t;
+      const whole = Math.floor(carry / 1000);
+      if (!whole) return;
+      carry -= whole * 1000;
+      setLeft((s) => Math.max(0, s - whole));
+    }, 250);
     return () => {
       window.clearInterval(id);
       accrue();

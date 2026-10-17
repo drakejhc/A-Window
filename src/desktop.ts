@@ -26,6 +26,11 @@ export type DesktopBridge = {
   onNowPlaying(cb: (np: NowPlaying | null) => void): () => void;
   /** Commands sent from the tray menu, e.g. "focus" or "planner". */
   onCommand(cb: (command: string) => void): () => void;
+  /** Brings the window back from the tray. */
+  show(): void;
+  /** Saves today's copy of the plan in the app's backups folder. */
+  backup(json: string): void;
+  openBackups(): void;
 };
 
 export const desktop: DesktopBridge | null = (window as unknown as { aWindow?: DesktopBridge }).aWindow ?? null;

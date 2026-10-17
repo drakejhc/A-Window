@@ -15,7 +15,9 @@ import { Scene } from "@/ui/Scene";
 import { Sheet } from "@/ui/Sheet";
 import { useWindow } from "@/ui/use-window";
 import { desktop } from "@/desktop";
+import { makeBackup } from "@/backup";
 import { useMusic, watchMusic } from "@/music";
+import { followSaver } from "@/power";
 import { SettingsContext, useSettingsState } from "@/settings";
 import { NowPlaying } from "@/ui/NowPlaying";
 import { SettingsPanel } from "@/ui/SettingsPanel";
@@ -272,13 +274,23 @@ export function App() {
         if (b.completed || ahead <= 0 || ahead > 5 / 60 || sent.has(key)) continue;
         sent.add(key);
         const note = new Notification(`${b.title} at ${formatHour(b.start)}`, { body: b.meta ? `${b.meta} · in ${Math.round(ahead * 60)} minutes` : `Starts in ${Math.round(ahead * 60)} minutes`, tag: key });
-        note.onclick = () => window.focus();
+        // From the tray, the click brings the hidden window back.
+        note.onclick = () => (desktop ? desktop.show() : window.focus());
       }
     };
     check();
     const t = window.setInterval(check, 20_000);
     return () => window.clearInterval(t);
   }, [settings.notify]);
+
+  // Desktop app: a copy of everything in the app's backups folder, a few seconds after each change.
+  useEffect(() => {
+    if (!desktop || state.sample) return;
+    const t = window.setTimeout(() => desktop?.backup(JSON.stringify(makeBackup())), 5000);
+    return () => window.clearTimeout(t);
+  }, [state]);
+
+  useEffect(() => followSaver(settings.saver, engine), [settings.saver, engine]);
 
   // Music from Spotify or Apple Music (desktop app): watch it, and turn the ambience down while it plays.
   useEffect(() => watchMusic(settings.music), [settings.music]);
@@ -293,8 +305,11 @@ export function App() {
         if (cmd === "focus") commands.current.startFocus();
         else if (cmd === "planner") setSheetOpen(true);
         else if (cmd === "settings") setSettingsOpen(true);
+        // Closed to the tray: quiet until it's opened again.
+        else if (cmd === "hidden") engine.setAway(true);
+        else if (cmd === "shown") engine.setAway(false);
       }),
-    [setSheetOpen],
+    [setSheetOpen, engine],
   );
 
   // The bottom controls fade away when you stop moving, leaving the window and the day.

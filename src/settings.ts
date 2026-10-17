@@ -11,6 +11,8 @@ export type Settings = {
   notify: boolean;
   /** Show what's playing in Spotify or Apple Music (desktop app only). */
   music: boolean;
+  /** Draw the window at a lower frame rate: while on battery, always, or never. */
+  saver: "auto" | "on" | "off";
   onboarded: boolean;
 };
 
@@ -34,7 +36,7 @@ function localeDefaults(): Settings {
   const fahrenheit = ["US", "LR", "MM", "BS", "BZ", "KY", "PW"].includes(r);
   const hourCycle = new Intl.DateTimeFormat(undefined, { hour: "numeric" }).resolvedOptions().hourCycle;
   const sundayFirst = ["US", "CA", "JP", "BR", "MX", "IL", "PH", "KR", "TW", "HK", "IN", "ZA"].includes(r);
-  return { units: fahrenheit ? "f" : "c", clock24: hourCycle === "h23" || hourCycle === "h24", weekStart: sundayFirst ? 0 : 1, notify: false, music: true, onboarded: false };
+  return { units: fahrenheit ? "f" : "c", clock24: hourCycle === "h23" || hourCycle === "h24", weekStart: sundayFirst ? 0 : 1, notify: false, music: true, saver: "auto", onboarded: false };
 }
 
 export function loadSettings(): Settings {

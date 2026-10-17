@@ -142,6 +142,9 @@ export class WindowEngine {
   private failures = 0;
 
   /** silent: never plays sound (the desktop wallpaper). */
+  private away = false;
+  private cap = 0;
+
   constructor(private silent = false) {
     this.prefs = loadPrefs();
     this.env = new Environment(this.city);
@@ -229,9 +232,21 @@ export class WindowEngine {
     this.save();
   }
 
+  /** While the desktop app's window is hidden in the tray: no sound until it's shown again. */
+  setAway(away: boolean) {
+    this.away = away;
+    if (away) this.audio.stop();
+    else if (this.prefs.sound && this.running && !this.silent) this.audio.start();
+  }
+
+  /** Battery saver: draw at most this many frames a second (0 for no limit). */
+  setFrameCap(fps: number) {
+    this.cap = fps;
+  }
+
   setSound(on: boolean) {
     this.prefs = { ...this.prefs, sound: on };
-    if (on && this.tickables.size && !this.silent) this.audio.start();
+    if (on && this.tickables.size && !this.silent && !this.away) this.audio.start();
     else this.audio.stop();
     this.save();
   }
@@ -281,17 +296,20 @@ export class WindowEngine {
     this.running = true;
     this.last = performance.now();
     const loop = (ts: number) => {
+      this.raf = requestAnimationFrame(loop);
       const dt = Math.min(0.1, Math.max(0, (ts - this.last) / 1000));
+      // Under a frame cap, skip display frames until enough time has passed (a little early, so 60 Hz screens
+      // land on an even 20 or 30 fps).
+      if (this.cap && dt < 1 / this.cap - 0.004) return;
       this.last = ts;
       this.env.update(this.now(), dt);
       this.env.updateMusic(getMusic(), dt);
       for (const t of this.tickables) t.tick(this.env, dt);
-      this.raf = requestAnimationFrame(loop);
     };
     this.raf = requestAnimationFrame(loop);
     void this.loadWeather();
     this.refresh = window.setInterval(() => void this.loadWeather(), REFRESH_MS);
-    if (this.prefs.sound && !this.silent) this.audio.start();
+    if (this.prefs.sound && !this.silent && !this.away) this.audio.start();
   }
 
   private stop() {

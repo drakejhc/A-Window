@@ -16,4 +16,7 @@ contextBridge.exposeInMainWorld("aWindow", {
   musicControl: (command) => ipcRenderer.send("music-control", command),
   onNowPlaying: (cb) => listen("now-playing", cb),
   onCommand: (cb) => listen("command", cb),
+  show: () => ipcRenderer.send("show-window"),
+  backup: (json) => ipcRenderer.send("backup", String(json)),
+  openBackups: () => ipcRenderer.send("open-backups"),
 });

@@ -106,6 +106,12 @@ export function SettingsPanel({ layout, onLayout, focusMinutes, onFocusMinutes, 
           </div>
           {citiesOpen && <CityPicker onPick={() => setCitiesOpen(false)} />}
           <Seg label="Temperature" value={settings.units} options={[["c", "°C"], ["f", "°F"]]} onChange={(units) => update({ units })} />
+          <Seg
+            label="Battery saver"
+            value={settings.saver}
+            options={[["auto", "On battery"], ["on", "Always"], ["off", "Off"]]}
+            onChange={(saver) => update({ saver })}
+          />
         </section>
 
         <section>
@@ -151,7 +157,10 @@ export function SettingsPanel({ layout, onLayout, focusMinutes, onFocusMinutes, 
 
         <section>
           <h3>Your data</h3>
-          <p className="hint">Your plan stays on this device. Weather and city search send only a city’s name or coordinates to Open-Meteo.</p>
+          <p className="hint">
+            Your plan stays on this device. Weather and city search send only a city’s name or coordinates to Open-Meteo.
+            {desktop && " A copy is saved in the app’s backups folder each day you use it, for the last 14 days."}
+          </p>
           <div className="setting-actions">
             <button type="button" className="tool" onClick={downloadBackup}>
               Export a backup
@@ -159,6 +168,11 @@ export function SettingsPanel({ layout, onLayout, focusMinutes, onFocusMinutes, 
             <button type="button" className="tool" onClick={() => file.current?.click()}>
               Import a backup
             </button>
+            {desktop && (
+              <button type="button" className="tool" onClick={() => desktop?.openBackups()}>
+                Backups folder
+              </button>
+            )}
             {!confirmClear ? (
               <button type="button" className="tool danger" onClick={() => setConfirmClear(true)}>
                 Clear my plan

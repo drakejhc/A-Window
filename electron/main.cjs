@@ -22,6 +22,8 @@ app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 
 const defaults = { wallpaper: false, wallpaperStyle: "room", openAtLogin: false, bounds: { width: 1440, height: 900 } };
 let store = { ...defaults };
+let quitting = false;
+app.on("before-quit", () => (quitting = true));
 function load() {
   try {
     store = { ...defaults, ...JSON.parse(fs.readFileSync(STORE(), "utf8")) };
@@ -81,10 +83,18 @@ function createMain({ show = true } = {}) {
     webPreferences: { contextIsolation: true, sandbox: true, preload: PRELOAD },
   });
   if (show) main.once("ready-to-show", () => main?.show());
-  main.on("close", () => {
+  // Closing hides the window to the menu bar or tray, so reminders still arrive; quitting (from the tray menu, or
+  // when the computer shuts down) really closes it.
+  main.on("close", (event) => {
     store.bounds = main.getNormalBounds();
     save();
+    if (quitting) return;
+    event.preventDefault();
+    main.hide();
+    main.webContents.send("command", "hidden");
   });
+  // Windows logging off or shutting down doesn't send before-quit; let the window close then too.
+  main.on("session-end", () => (quitting = true));
   main.on("closed", () => (main = null));
   // Links to other sites open in the default browser, never inside the app.
   main.webContents.setWindowOpenHandler(({ url }) => {
@@ -106,6 +116,7 @@ function showMain(command) {
   if (fresh) createMain();
   else {
     if (main.isMinimized()) main.restore();
+    if (!main.isVisible()) main.webContents.send("command", "shown");
     main.show();
     main.focus();
   }
@@ -193,6 +204,28 @@ ipcMain.on("music-watch", (e, on) => {
     });
   }
   updateMusicWatch();
+});
+ipcMain.on("show-window", () => showMain());
+
+// A copy of the plan in the app's folder for each of the last 14 days it was used, so a wiped or broken local
+// storage never loses everything.
+const BACKUPS = () => path.join(app.getPath("userData"), "backups");
+ipcMain.on("backup", (_e, json) => {
+  if (typeof json !== "string" || json.length > 20_000_000) return;
+  try {
+    JSON.parse(json);
+    fs.mkdirSync(BACKUPS(), { recursive: true });
+    const day = new Date().toLocaleDateString("en-CA");
+    fs.writeFileSync(path.join(BACKUPS(), `plan-${day}.json`), json);
+    const old = fs.readdirSync(BACKUPS()).filter((f) => /^plan-\d{4}-\d{2}-\d{2}\.json$/.test(f)).sort().slice(0, -14);
+    for (const f of old) fs.rmSync(path.join(BACKUPS(), f));
+  } catch {
+    /* disk full or not writable: try again on the next change */
+  }
+});
+ipcMain.on("open-backups", () => {
+  fs.mkdirSync(BACKUPS(), { recursive: true });
+  void shell.openPath(BACKUPS());
 });
 ipcMain.on("music-control", (_e, command) => {
   if (["playpause", "next", "previous"].includes(command)) void watcher.control(command);
