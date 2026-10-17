@@ -102,7 +102,7 @@ export class Environment implements Eased {
   ambient: RGB = [1, 1, 1];
   onThunder: ((distance: number) => void) | null = null;
   /** Music in the room: how present the record player is (eased 0..1), the platter's angle, and the album art. */
-  music = { on: 0, playing: false, spin: 0, arm: 0, art: null as CanvasImageSource | null };
+  music = { on: 0, playing: false, spin: 0, arm: 0, art: null as CanvasImageSource | null, title: "", artist: "" };
   /** The lamp's colour, tinted by the album art while music plays. */
   lampColor: RGB = LAMP;
   private astroAt = 0;
@@ -182,6 +182,7 @@ export class Environment implements Eased {
     // 33⅓ rpm, spinning up and down rather than starting instantly.
     mu.spin = (mu.spin + dt * Math.PI * 2 * (33.33 / 60) * mu.arm) % (Math.PI * 2);
     mu.art = m.art;
+    if (m.np) (mu.title = m.np.title), (mu.artist = m.np.artist);
     const tint = m.tint ? mixRGB(LAMP, mixRGB(m.tint, [255, 255, 255], 0.25), 0.45 * mu.arm) : LAMP;
     this.lampColor = mixRGB(this.lampColor, tint, 1 - Math.exp(-dt / 1.5));
   }

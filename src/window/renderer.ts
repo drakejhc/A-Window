@@ -1,6 +1,7 @@
 /** Owns one canvas and draws the parts every window shares: sky, stars, sun and moon, clouds, falling weather,
  *  lightning and the glass. A window pack draws the room and the view. */
 import type { Environment } from "./environment";
+import { hologram } from "./packs/painted-room";
 import type { AnyRoom, AnyView, FrameEnv, Geom, Painter } from "./types";
 import { clamp, makeRng, mixRGB, rgba, smooth, type RGB, type Rng } from "./util";
 
@@ -424,6 +425,7 @@ export class Renderer {
     ctx.arc(px, py, 4.5 * s, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
+    hologram(ctx, env, cx, cy, s);
   }
 
   private drawSky(env: FrameEnv) {

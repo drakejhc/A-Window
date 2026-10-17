@@ -200,4 +200,55 @@ export function recordPlayer(ctx: CanvasRenderingContext2D, env: FrameEnv, x: nu
   ctx.arc(px, py, 6 * s, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
+  hologram(ctx, env, cx, cy, s);
+}
+
+/** A small hologram projected up from the record: a beam of light, and the album art with the song's name floating
+ *  in it, flickering and scanned like an old projector. */
+export function hologram(ctx: CanvasRenderingContext2D, env: FrameEnv, x: number, y: number, s: number) {
+  const m = env.music, k = m.on * (0.4 + 0.6 * m.arm);
+  if (k < 0.02) return;
+  const t = env.t, flicker = 0.88 + 0.08 * Math.sin(t * 13) + 0.04 * Math.sin(t * 31.7) - (Math.sin(t * 0.7) > 0.985 ? 0.3 : 0);
+  const a = k * flicker, cyan: RGB = [140, 225, 255];
+  const size = 104 * s, bob = Math.sin(t * 1.3) * 3 * s, top = y - 60 * s - size + bob, left = x - size / 2;
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  // The beam, widening from the spindle up to the picture.
+  const beam = ctx.createLinearGradient(0, y, 0, top);
+  beam.addColorStop(0, rgba(cyan, 0.35 * a));
+  beam.addColorStop(1, rgba(cyan, 0.04 * a));
+  ctx.fillStyle = beam;
+  trace(ctx, [[x - 3 * s, y], [x + 3 * s, y], [left + size, top + size], [left, top + size]]);
+  ctx.fill();
+  glow(ctx, x, y, 14 * s, cyan, 0.5 * a);
+  // The album art, tinted blue and slightly see-through.
+  ctx.globalAlpha = 0.55 * a;
+  if (m.art) ctx.drawImage(m.art, left, top, size, size);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = rgba(cyan, 0.16 * a);
+  ctx.fillRect(left, top, size, size);
+  ctx.strokeStyle = rgba(cyan, 0.6 * a);
+  ctx.lineWidth = Math.max(1, s);
+  ctx.strokeRect(left, top, size, size);
+  // Scanlines rolling slowly down through it.
+  ctx.globalCompositeOperation = "source-over";
+  ctx.fillStyle = "rgba(4,10,24,0.28)";
+  for (let ly = top + ((t * 12 * s) % (3 * s)); ly < top + size; ly += 3 * s) ctx.fillRect(left, ly, size, Math.max(1, s));
+  ctx.globalCompositeOperation = "lighter";
+  // The song and artist, above the picture.
+  const fit = (text: string, px: number) => {
+    ctx.font = `600 ${px}px Inter, system-ui, sans-serif`;
+    let out = text;
+    while (out.length > 1 && ctx.measureText(out).width > size * 1.6) out = out.slice(0, -2) + "…";
+    return out;
+  };
+  ctx.textAlign = "center";
+  ctx.textBaseline = "bottom";
+  ctx.shadowColor = rgba(cyan, 0.9 * a);
+  ctx.shadowBlur = 8 * s;
+  ctx.fillStyle = rgba([220, 246, 255], 0.9 * a);
+  if (m.title) ctx.fillText(fit(m.title, Math.round(15 * s)), x, top - 18 * s);
+  ctx.fillStyle = rgba([180, 232, 255], 0.65 * a);
+  if (m.artist) ctx.fillText(fit(m.artist, Math.round(11 * s)), x, top - 4 * s);
+  ctx.restore();
 }

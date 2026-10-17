@@ -46,7 +46,8 @@ async function readWindows() {
     "-NoProfile",
     "-NonInteractive",
     "-Command",
-    "Get-Process -Name Spotify -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle } | Select-Object -ExpandProperty MainWindowTitle",
+    // UTF-8 output, or titles in Chinese, Japanese, Korean etc. come back as "????".
+    "[Console]::OutputEncoding = [Text.Encoding]::UTF8; Get-Process -Name Spotify -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle } | Select-Object -ExpandProperty MainWindowTitle",
   ], 4000);
   if (!out) return (lastWindows = null);
   // Spotify's window title is "Artist - Title" while playing, and just "Spotify ..." when paused.
