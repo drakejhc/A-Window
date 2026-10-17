@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { localParts } from "@/window/astro";
+import { SOUND_NAMES, SOUNDS } from "@/scenes";
 import { ROOMS, VIEWS } from "@/window/engine";
 import { PRESETS } from "@/window/weather";
 
@@ -45,7 +46,7 @@ export function Dock({ sheetOpen, onToggleSheet, focusing, onFocus, onSettings }
           <label className="field">
             <span>The view outside</span>
             <select value={snap.prefs.view} onChange={(e) => engine.setScene({ view: e.target.value })}>
-              <option value="auto">Auto (a fjord in the far north and south)</option>
+              <option value="auto">Auto (the room's own view)</option>
               {VIEWS.map((v) => (
                 <option key={v.id} value={v.id}>
                   {v.name}
@@ -91,6 +92,23 @@ export function Dock({ sheetOpen, onToggleSheet, focusing, onFocus, onSettings }
             <span>Volume</span>
             <input type="range" min={0} max={1} step={0.01} value={snap.prefs.volume} onChange={(e) => engine.setVolume(Number(e.target.value))} />
           </label>
+          <details className="sounds">
+            <summary>Sounds</summary>
+            {SOUNDS.map((s) => {
+              const own = snap.prefs.mix[s], level = own ?? snap.ambience[s] ?? 0;
+              return (
+                <label key={s} className="row sound-row" data-own={own !== undefined || undefined}>
+                  <span>{SOUND_NAMES[s]}</span>
+                  <input type="range" min={0} max={1.5} step={0.05} value={level} aria-label={`${SOUND_NAMES[s]} level`} onChange={(e) => engine.setMix(s, Number(e.target.value))} />
+                </label>
+              );
+            })}
+            {Object.keys(snap.prefs.mix).length > 0 && (
+              <button type="button" className="link-btn" onClick={() => engine.applyMix({})}>
+                Back to the scene’s own mix
+              </button>
+            )}
+          </details>
           {snap.status === "offline" && <p className="hint">Live weather can’t be reached from here, so the window shows mild weather. Pick conditions above, or use the desktop app.</p>}
         </section>
       )}

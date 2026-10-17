@@ -28,7 +28,9 @@
 3. [x] The glass at night: a faint reflection of the room, condensation and frost (`src/window/glass.ts`). Frost
    grows in ferns from the corners on cold nights and mornings; mist forms when it's cold and damp and can be
    wiped with the pointer, fogging back over a minute or two; after dark the lit room reflects faintly.
-4. [ ] Saved scenes with a schedule, plus a separate volume for each sound.
+4. [x] Saved scenes with a schedule, plus a separate volume for each sound (`src/scenes.ts`). Adjust → Sounds sets
+   each sound's level (with new café murmur and vinyl crackle); Settings → Scenes saves the window, schedules scenes
+   by time of day, and can switch to a scene during Focus.
 5. [ ] Saving painted rooms between launches so big screens don't sit dark while repainting.
 
 **And the big options (all wanted; ask before starting each, as they're L-sized)**

@@ -5,7 +5,10 @@ import { desktop, type DesktopSettings } from "@/desktop";
 import { useMusic } from "@/music";
 import { useSettings } from "@/settings";
 
+import type { SavedScene, ScenesState } from "@/scenes";
+
 import { CityPicker } from "./CityPicker";
+import { ScenesSection } from "./ScenesSection";
 import { FOCUS_LENGTHS } from "./Dock";
 import { useWindow } from "./use-window";
 
@@ -15,6 +18,9 @@ type Props = {
   focusMinutes: number;
   onFocusMinutes: (m: number) => void;
   onStartFresh: () => void;
+  scenes: ScenesState;
+  onScenes: (fn: (s: ScenesState) => ScenesState) => void;
+  onShowScene: (scene: SavedScene) => void;
   onClose: () => void;
 };
 
@@ -45,7 +51,7 @@ function Toggle({ label, hint, checked, onChange, disabled }: { label: string; h
   );
 }
 
-export function SettingsPanel({ layout, onLayout, focusMinutes, onFocusMinutes, onStartFresh, onClose }: Props) {
+export function SettingsPanel({ layout, onLayout, focusMinutes, onFocusMinutes, onStartFresh, scenes, onScenes, onShowScene, onClose }: Props) {
   const { settings, update } = useSettings();
   const { snap } = useWindow();
   const music = useMusic();
@@ -113,6 +119,8 @@ export function SettingsPanel({ layout, onLayout, focusMinutes, onFocusMinutes, 
             onChange={(saver) => update({ saver })}
           />
         </section>
+
+        <ScenesSection scenes={scenes} onScenes={onScenes} onShow={onShowScene} />
 
         <section>
           <h3>Planner</h3>

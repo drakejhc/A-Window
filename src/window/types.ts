@@ -37,6 +37,9 @@ export type AmbienceWeights = {
   fire: number;
   crickets: number;
   birds: number;
+  /** A café's murmur and clinking cups, and a record's crackle: off unless a room asks for them or you turn them up. */
+  cafe?: number;
+  vinyl?: number;
 };
 
 /** The view outside: drawn inside the glass. The renderer adds sky, sun, moon, clouds and weather around it. */

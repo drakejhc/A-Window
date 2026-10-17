@@ -2,6 +2,7 @@
  *  short events (taps on the glass, crackles, passing cars, crickets, birds, thunder) are scheduled on a
  *  100 ms tick. No audio files. Reads the environment, never writes it. */
 import type { Environment } from "./environment";
+import type { SoundMix } from "../scenes";
 import type { AmbienceWeights } from "./types";
 import { clamp } from "./util";
 
@@ -19,14 +20,20 @@ export class Ambience {
   private master!: GainNode;
   private white!: AudioBuffer;
   private brown!: AudioBuffer;
-  private beds!: { rain: Bed; patter: Bed; wind: Bed; hum: Bed; fire: Bed };
+  private beds!: { rain: Bed; patter: Bed; wind: Bed; hum: Bed; fire: Bed; cafe: Bed; hiss: Bed };
+  private mix: SoundMix = {};
   private gustDepth!: GainNode;
+  private swellDepth!: GainNode;
 
   setEnv(env: Environment) {
     this.env = env;
   }
   setWeights(w: AmbienceWeights) {
     this.weights = w;
+  }
+  /** Your own levels for some sounds, in place of the scene's. */
+  setMix(m: SoundMix) {
+    this.mix = m;
   }
 
   /** Starts (or resumes) the sound. Browsers keep it silent until the page has had a click or key press. */
@@ -91,7 +98,20 @@ export class Ambience {
       wind: this.bed(this.brown, [["bandpass", 380, 0.9]]),
       hum: this.bed(this.brown, [["lowpass", 200, 0.7]]),
       fire: this.bed(this.brown, [["lowpass", 420, 0.7]]),
+      // A room of voices too far off to make out: low, round and slowly swelling.
+      cafe: this.bed(this.brown, [
+        ["bandpass", 520, 0.8],
+        ["lowpass", 1400, 0.6],
+      ]),
+      hiss: this.bed(this.white, [["highpass", 5200, 0.5]]),
     };
+    const swell = ctx.createOscillator(),
+      swellDepth = ctx.createGain();
+    swell.frequency.value = 0.07;
+    swellDepth.gain.value = 0;
+    swell.connect(swellDepth).connect(this.beds.cafe.gain.gain);
+    swell.start();
+    this.swellDepth = swellDepth;
     // Wind: a slow sweep of the band, with gusts riding on the level.
     const sweep = ctx.createOscillator(),
       sweepDepth = ctx.createGain();
@@ -173,7 +193,19 @@ export class Ambience {
       ctx = this.ctx;
     if (!this.enabled || !e || !ctx || ctx.state !== "running") return;
     const now = ctx.currentTime,
-      w = this.weights;
+      mix = this.mix,
+      base = this.weights;
+    // Each sound at your level if you've set one, otherwise at the scene's.
+    const w = {
+      rain: mix.rain ?? base.rain,
+      wind: mix.wind ?? base.wind,
+      city: mix.city ?? base.city,
+      fire: mix.fire ?? base.fire,
+      crickets: mix.crickets ?? base.crickets,
+      birds: mix.birds ?? base.birds,
+      cafe: mix.cafe ?? base.cafe ?? 0,
+      vinyl: mix.vinyl ?? base.vinyl ?? 0,
+    };
     const wind = e.wind * 0.8 + e.snow * 0.1 + 0.04;
     this.set(this.beds.rain, e.rain * 0.32 * w.rain);
     this.set(this.beds.patter, e.rain * e.rain * 0.14 * w.rain);
@@ -181,12 +213,17 @@ export class Ambience {
     this.gustDepth.gain.setTargetAtTime(wind * 0.12 * w.wind, now, 1.2);
     this.set(this.beds.hum, (0.025 + 0.05 * e.dayness) * w.city * (1 - 0.5 * e.snow));
     this.set(this.beds.fire, e.fire * 0.07 * w.fire);
+    this.set(this.beds.cafe, 0.09 * w.cafe);
+    this.swellDepth.gain.setTargetAtTime(0.03 * w.cafe, now, 1.2);
+    this.set(this.beds.hiss, 0.01 * w.vinyl);
 
     const chance = (perSecond: number) => Math.random() < perSecond * TICK;
     const at = () => now + Math.random() * TICK;
     if (chance(e.rain * 6 * w.rain)) this.tap(at());
     for (let i = 0; i < 3; i++) if (chance(e.fire * 5 * w.fire)) this.crackle(at());
     if (chance((0.03 + 0.05 * e.dayness) * (1 - e.snow * 0.6) * w.city)) this.carPass(at());
+    if (chance(0.35 * w.cafe)) this.clink(at());
+    for (let i = 0; i < 4; i++) if (chance(5 * w.vinyl)) this.pop(at());
     const dry = e.rain < 0.05 && e.snow < 0.05;
     const warmSeason =
       e.season === "summer" || e.season === "autumn" || (e.season === "spring" && e.temp > 16);
@@ -249,6 +286,34 @@ export class Ambience {
       q: 6,
       peak: 0.05 + Math.random() * 0.08,
       pan: Math.random() * 1.4 - 0.7,
+    });
+  }
+
+  /** A cup set down on a saucer somewhere across the room. */
+  private clink(t: number) {
+    const ctx = this.ctx!,
+      o = ctx.createOscillator(),
+      g = ctx.createGain(),
+      f = 2400 + Math.random() * 2200;
+    o.type = "sine";
+    o.frequency.setValueAtTime(f, t);
+    o.frequency.exponentialRampToValueAtTime(f * 0.985, t + 0.3);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.012 + Math.random() * 0.018, t + 0.003);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+    o.connect(g).connect(this.panner(Math.random() * 1.6 - 0.8)).connect(this.master);
+    o.start(t);
+    o.stop(t + 0.4);
+  }
+
+  /** A speck of dust under the needle. */
+  private pop(t: number) {
+    this.burst(t, {
+      dur: 0.004 + Math.random() * 0.006,
+      type: "highpass",
+      freq: 2500 + Math.random() * 3000,
+      peak: 0.02 + Math.random() * Math.random() * 0.1,
+      pan: (Math.random() - 0.5) * 0.3,
     });
   }
 

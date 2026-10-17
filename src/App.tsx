@@ -18,6 +18,7 @@ import { desktop } from "@/desktop";
 import { makeBackup } from "@/backup";
 import { useMusic, watchMusic } from "@/music";
 import { followSaver } from "@/power";
+import { minutesOf, scheduledScene, useScenesState, type SavedScene } from "@/scenes";
 import { mixRGB } from "@/window/util";
 import { SettingsContext, useSettingsState } from "@/settings";
 import { NowPlaying } from "@/ui/NowPlaying";
@@ -205,6 +206,13 @@ export function App() {
   function startFocus() {
     if (focus) return;
     setDraft(null);
+    // A Focus scene takes over the window for the session; what was showing comes back after.
+    const fs = scenes.scenes.find((s) => s.id === scenes.focus);
+    if (fs) {
+      const p = engine.getSnapshot().prefs;
+      beforeFocus.current = { id: "", name: "", room: p.room, view: p.view, mix: p.mix, sound: p.sound };
+      showScene(fs);
+    }
     setFocus({ block: current ?? null, minutes: FOCUS_LENGTHS.includes(focusMinutes) ? focusMinutes : 25 });
   }
 
@@ -217,6 +225,8 @@ export function App() {
       notify(`Nice work. “${b.title}” is done`);
     } else if (minutes >= 1) notify(`${minutes} ${minutes === 1 ? "minute" : "minutes"} of focus`);
     setFocus(null);
+    if (beforeFocus.current) showScene(beforeFocus.current);
+    beforeFocus.current = null;
   }
 
   // Keyboard shortcuts, ignored while typing.
@@ -292,6 +302,33 @@ export function App() {
   }, [state]);
 
   useEffect(() => followSaver(settings.saver, engine), [settings.saver, engine]);
+
+  // Saved scenes, and the schedule that changes them through the day (by your own clock). The schedule acts
+  // only when its scene changes, so anything you change by hand stays until the next scheduled time.
+  const [scenes, setScenes] = useScenesState();
+  const beforeFocus = useRef<SavedScene | null>(null);
+  const showScene = useCallback(
+    (sc: SavedScene) => {
+      engine.setScene({ room: sc.room, view: sc.view });
+      engine.applyMix(sc.mix);
+      engine.setSound(sc.sound);
+    },
+    [engine],
+  );
+  const lastScheduled = useRef<string | null>(null);
+  useEffect(() => {
+    const check = () => {
+      const id = scheduledScene(scenes.schedule, minutesOf(new Date()));
+      if (id !== lastScheduled.current) {
+        lastScheduled.current = id;
+        const sc = scenes.scenes.find((s) => s.id === id);
+        if (sc && !beforeFocus.current) showScene(sc);
+      }
+    };
+    check();
+    const t = window.setInterval(check, 30_000);
+    return () => window.clearInterval(t);
+  }, [scenes, showScene]);
 
   // The planner's glass takes on the scene's current colour: the sky, warmed by the lamp when it's on.
   useEffect(() => {
@@ -462,6 +499,9 @@ export function App() {
           focusMinutes={focusMinutes}
           onFocusMinutes={setFocusMinutes}
           onStartFresh={startFresh}
+          scenes={scenes}
+          onScenes={setScenes}
+          onShowScene={showScene}
           onClose={() => setSettingsOpen(false)}
         />
       )}

@@ -13,6 +13,7 @@ import { paintedValley } from "./packs/painted-valley";
 import type { AmbienceWeights, AnyRoom, AnyView } from "./types";
 import { describe, fetchCurrent, type Weather } from "./weather";
 import { isWallpaper } from "../desktop";
+import { cleanMix, type Sound, type SoundMix } from "../scenes";
 import { getMusic } from "../music";
 
 /** What's outside the window, and the room you're in. Any view goes with any room. */
@@ -31,7 +32,17 @@ export const ROOMS: { id: string; name: string; pack: AnyRoom; three?: string; v
   { id: "mediterranean", name: "Mediterranean (3D)", pack: paintedStudy, three: "mediterranean", view: "painted-city" },
 ];
 export type WeatherStatus = "loading" | "live" | "stale" | "offline" | "preset";
-export type WindowPrefs = { city: string; sound: boolean; volume: number; preset: number | null; view: string; room: string; custom?: City | undefined };
+export type WindowPrefs = {
+  city: string;
+  sound: boolean;
+  volume: number;
+  preset: number | null;
+  view: string;
+  room: string;
+  /** Your own levels for some sounds; the rest follow the scene. */
+  mix: SoundMix;
+  custom?: City | undefined;
+};
 export type WindowSnapshot = {
   city: City;
   prefs: WindowPrefs;
@@ -43,6 +54,8 @@ export type WindowSnapshot = {
   weather: Weather;
   /** Milliseconds the scene is shifted from the real time, for previewing dusk or night. */
   shift: number;
+  /** How loud the scene itself would make each sound, before your own mix. */
+  ambience: AmbienceWeights;
 };
 
 type Tickable = { tick: (env: Environment, dt: number) => void };
@@ -73,6 +86,7 @@ function loadPrefs(): WindowPrefs {
     preset: null,
     view: "auto",
     room: "auto",
+    mix: {},
   };
   try {
     const p = JSON.parse(window.localStorage.getItem(PREFS_KEY) ?? "{}") as Partial<WindowPrefs> & { scene?: string };
@@ -89,6 +103,7 @@ function loadPrefs(): WindowPrefs {
       preset: typeof p.preset === "number" ? p.preset : null,
       view: VIEWS.some((v) => v.id === p.view) ? p.view! : "auto",
       room: ROOMS.some((r) => r.id === p.room) ? p.room! : "auto",
+      mix: cleanMix(p.mix),
       custom: p.custom && typeof p.custom.lat === "number" && typeof p.custom.tz === "string" ? p.custom : undefined,
     };
   } catch {
@@ -250,6 +265,20 @@ export class WindowEngine {
     this.save();
   }
 
+  /** Sets your own level for one sound, or (null) hands it back to the scene. */
+  setMix(sound: Sound, level: number | null) {
+    const mix = { ...this.prefs.mix };
+    if (level === null) delete mix[sound];
+    else mix[sound] = level;
+    this.applyMix(mix);
+  }
+
+  /** Replaces your whole mix (empty follows the scene for every sound). */
+  applyMix(mix: SoundMix) {
+    this.prefs = { ...this.prefs, mix: cleanMix(mix) };
+    this.save();
+  }
+
   setVolume(v: number) {
     this.prefs = { ...this.prefs, volume: v };
     this.audio.setVolume(v);
@@ -360,6 +389,7 @@ export class WindowEngine {
   private publish() {
     const { view, room, room3d, ambience } = sceneFor(this.prefs, this.city);
     this.audio.setWeights(ambience);
+    this.audio.setMix(this.prefs.mix);
     this.snapshot = {
       city: this.city,
       prefs: this.prefs,
@@ -369,6 +399,7 @@ export class WindowEngine {
       status: this.prefs.preset !== null ? "preset" : this.status,
       weather: this.effectiveWeather(),
       shift: this.shift,
+      ambience,
     };
     for (const fn of this.listeners) fn();
   }
