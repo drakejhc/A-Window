@@ -12,7 +12,8 @@
   (saved choices move to the nearest painted view).
 
 **Smaller issues to fix**
-- [ ] The bed is the bedroom's largest and weakest shape.
+- [x] The bed is the bedroom's largest and weakest shape. It now has quilting that follows its humps and a
+  knitted terracotta throw draped over its side, which catches the window light and the fire.
 - [ ] The planner darkens the whole scene evenly.
 - [ ] Very wide screens show the window small in the middle.
 - [ ] Big screens sit dark for seconds while a painted room paints.

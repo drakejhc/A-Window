@@ -13,7 +13,7 @@ const NIGHT: Palette = {
   sillFront: [46, 36, 46], duvet: [118, 122, 150], duvetFold: [78, 80, 106], duvetHi: [150, 156, 184], pillow: [134, 136, 160],
   pillow2: [110, 106, 134], bedFrame: [40, 30, 32], stone: [96, 92, 104], stoneDark: [62, 58, 70], firebox: [16, 12, 14],
   mantel: [60, 44, 42], wax: [150, 146, 160], b1: [92, 64, 72], b2: [70, 80, 104], blanket: [110, 70, 72], plant: [24, 36, 40],
-  wire: [20, 16, 18], logs: [40, 28, 26],
+  wire: [20, 16, 18], logs: [40, 28, 26], throw: [96, 54, 58], throwRib: [70, 40, 46],
 };
 const DAY: Palette = {
   backWall: [150, 132, 128], sideWall: [134, 118, 116], leftWall: [118, 104, 106], ceiling: [112, 92, 84], ceilingLine: [84, 68, 62],
@@ -21,7 +21,7 @@ const DAY: Palette = {
   sillFront: [140, 124, 118], duvet: [226, 224, 228], duvetFold: [176, 176, 192], duvetHi: [244, 242, 240], pillow: [236, 232, 228],
   pillow2: [208, 200, 204], bedFrame: [110, 84, 72], stone: [200, 192, 184], stoneDark: [150, 142, 140], firebox: [40, 30, 30],
   mantel: [140, 104, 86], wax: [236, 230, 220], b1: [176, 112, 110], b2: [120, 140, 170], blanket: [190, 110, 100], plant: [70, 96, 90],
-  wire: [60, 50, 50], logs: [90, 66, 56],
+  wire: [60, 50, 50], logs: [90, 66, 56], throw: [184, 102, 84], throwRib: [150, 78, 66],
 };
 /** Everything as firelight and candlelight show it. */
 const WARM: Palette = {
@@ -30,7 +30,7 @@ const WARM: Palette = {
   sillFront: [170, 100, 70], duvet: [246, 206, 170], duvetFold: [196, 140, 110], duvetHi: [255, 228, 192], pillow: [250, 214, 180],
   pillow2: [226, 170, 140], bedFrame: [140, 80, 54], stone: [240, 186, 140], stoneDark: [180, 120, 90], firebox: [70, 30, 16],
   mantel: [190, 110, 70], wax: [255, 226, 180], b1: [230, 140, 100], b2: [180, 140, 130], blanket: [240, 140, 100], plant: [110, 80, 50],
-  wire: [80, 50, 36], logs: [120, 60, 36],
+  wire: [80, 50, 36], logs: [120, 60, 36], throw: [240, 128, 88], throwRib: [204, 98, 66],
 };
 
 type Layout = {
@@ -182,6 +182,9 @@ export const paintedBedroom = paintedRoom<Layout>({
     // Shade low on the duvet, light along its top where it catches the window and the fire.
     m.push({ kind: "fill", pts: wb([[-40, top + (H - top) * 0.55], [right * 0.6, top + (H - top) * 0.7], [right + 50 * s, H + 20], [-40, H + 20]], 6), key: "duvetFold", angle: 0.1, density: 140, spread: 0.08, len: [30, 80] });
     m.push({ kind: "line", pts: contour.map(([x, y]) => [x, y + 7 * s] as Pt), key: "duvetHi", width: 12 * s, alpha: 0.55 });
+    // Quilting lines that follow the duvet's form, sagging a little between the humps as they come toward us.
+    const below = (k: number, sag: number): Pt[] => contour.map(([x, y], i) => [x - k * 30 * s, y + k * (H - top) * 0.95 + Math.sin((i / 30) * Math.PI * 2.6) * sag * s] as Pt);
+    for (let k = 1; k <= 5; k++) m.push({ kind: "line", pts: below(k / 6, 6 + k * 3), key: "duvetFold", width: 2.2 * s, alpha: 0.28 });
     // Creases that follow the duvet's form, sweeping down from its humps.
     for (let i = 0; i < 6; i++) {
       const c = contour[3 + i * 4]!, sw = (i % 2 ? 1 : -1) * 30 * s;
@@ -191,6 +194,29 @@ export const paintedBedroom = paintedRoom<Layout>({
       });
       m.push({ kind: "line", pts: crease, key: "duvetFold", width: (8 + (i % 3) * 5) * s, alpha: 0.5 });
       m.push({ kind: "line", pts: crease.map(([x, y]) => [x + 9 * s, y] as Pt), key: "duvetHi", width: 5 * s, alpha: 0.35 });
+    }
+    // A knitted throw over the right half of the bed, hanging down over its side with a fringed hem, its ribs running
+    // down its length.
+    const ti = 14, [lx0, ly0] = contour[ti]!;
+    const hem: Pt[] = [[right + 46 * s, top + (H - top) * 0.62], [right - 10 * s, top + (H - top) * 0.7]];
+    m.push({
+      kind: "fill",
+      pts: wb([...contour.slice(ti).map(([x, y]) => [x, y + 5 * s] as Pt), [right + 16 * s, top + 8 * s], ...hem, [lx0 - 120 * s, H + 20], [lx0 - 20 * s, ly0 + 30 * s]], 3),
+      key: "throw",
+      angle: 1.2,
+      density: 90,
+      spread: 0.1,
+      len: [20, 50],
+      edge: 0.35,
+    });
+    for (let i = ti + 1; i <= 30; i += 1.5) {
+      const [cx, cy] = contour[Math.floor(i)]!, u = (i - ti) / (30 - ti);
+      const end: Pt = u > 0.85 ? [right + 40 * s - (1 - u) * 160 * s, top + (H - top) * 0.62] : [cx - 110 * s * (1 - u), H + 20];
+      m.push({ kind: "line", pts: [[cx, cy + 9 * s], [(cx + end[0]) / 2 - 6 * s, (cy + end[1]) / 2], end], key: "throwRib", width: 3 * s, alpha: 0.5 });
+    }
+    for (let i = 0; i <= 8; i++) {
+      const [ax, ay] = hem[0]!, [bx, by] = hem[1]!, fx = ax + ((bx - ax) * i) / 8, fy = ay + ((by - ay) * i) / 8;
+      m.push({ kind: "line", pts: [[fx, fy], [fx + 2 * s, fy + 14 * s]], key: "throwRib", width: 2.4 * s, alpha: 0.75 });
     }
     // Pillows.
     const pillow = (cx: number, cy: number, w: number, h: number, key: string, tilt: number) => {
