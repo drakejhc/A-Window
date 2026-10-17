@@ -39,13 +39,22 @@ npm test
 - **Replan** (`R`) moves tasks that fell behind into the free time left today.
 - **Focus** (`F`) works on the block happening now, or the next one, or a free session when the day is clear.
   Focused minutes are recorded on the block. `Space` pauses and `Esc` exits.
-- **The window**: search for any city and choose a room in the bottom bar. The 3D rooms are the Listening room, a Nordic
-  cabin, a Japanese room and a Mediterranean room, and the *Midnight study (painted)*
-  and *Cozy bedroom (painted)* are 2D paintings instead: brushwork, hand-drawn edges and grain,
-  painted once in night, day and lamplight and blended live, looking out on a *Painted city* and a *Painted valley*; *Auto* picks one to suit the city (the cabin in the far north and
-  south, the Japanese room in East Asia, the Mediterranean room where it's warm, the Listening room elsewhere). The
-  painted rooms are lighter on the computer than the 3D ones. Turn sound on for rain, fire, birds and the city. *Adjust* picks the view outside (the painted city or the painted valley), the weather, a preview of another time of
-  day, and the volume. Any room goes with any view.
+- **The window**: search for any city and choose a room in the bottom bar.
+  - **Painted rooms:** the *Midnight study* and the *Cozy bedroom* are 2D paintings, with brushwork, hand-drawn
+    edges and grain. Each is painted in night, day and lamplight and blended live. Sunlight through the window
+    falls across the desk, bed and floor and slides with the real sun.
+  - **3D rooms:** the Listening room, a Nordic cabin and a Mediterranean room.
+  - **Views:** every room looks out on a painted view, the *Painted city* or the *Painted valley*. Any room goes
+    with any view.
+  - **Auto** picks a room to suit the city: the cabin in the far north and south, the study in East Asia, the
+    Mediterranean room where it's warm, and the Listening room elsewhere.
+  - **The glass:** frost grows on it on cold mornings, mist forms when it's cold and damp (drag to wipe it), and
+    the lit room reflects in it at night.
+  - **Adjust:** picks the view, the weather, a preview of another time of day, the volume, and under *Sounds* your
+    own level for each sound (rain, wind, city, fire, crickets, birds, café murmur, vinyl crackle).
+- **Scenes** (in Settings): save the window as it is (room, view and sounds) and show it again any time. Schedule
+  scenes through the day, say the study by day and the bedroom after nine, and pick one to switch to while you
+  focus.
 - **Repeating events**: an event can repeat every day, every weekday or every week. Delete one day or the whole series.
 - **Settings** (the gear): °C/°F, 12/24-hour clock, the first day of the week, reminders, layout, backups, and in the
   desktop app the live wallpaper, open at login and what's playing.
