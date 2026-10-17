@@ -141,6 +141,29 @@ function applyLogin() {
   app.setLoginItemSettings({ openAtLogin: store.openAtLogin, openAsHidden: true, args: ["--hidden"] });
 }
 
+// Updates come from the project's GitHub releases: downloaded quietly in the background, installed when the app
+// quits, or straight away from "Restart to Update" in the tray menu. Not on macOS, where updating needs a signed app.
+let updateReady = false;
+function watchForUpdates() {
+  if (!app.isPackaged || process.platform === "darwin") return;
+  const { autoUpdater } = require("electron-updater");
+  autoUpdater.on("error", () => {
+    /* offline, or no release yet: try again later */
+  });
+  autoUpdater.on("update-downloaded", () => {
+    updateReady = true;
+    refreshTray();
+  });
+  const check = () => void autoUpdater.checkForUpdatesAndNotify().catch(() => {});
+  check();
+  setInterval(check, 6 * 60 * 60 * 1000);
+}
+
+function installUpdate() {
+  quitting = true;
+  require("electron-updater").autoUpdater.quitAndInstall();
+}
+
 function buildTray() {
   const icon = nativeImage.createFromPath(path.join(__dirname, "assets", process.platform === "darwin" ? "trayTemplate.png" : "tray.png"));
   if (process.platform === "darwin") icon.setTemplateImage(true);
@@ -166,6 +189,7 @@ function buildTray() {
         },
         { label: "Settings…", click: () => showMain("settings") },
         { type: "separator" },
+        ...(updateReady ? [{ label: "Restart to Update", click: installUpdate }, { type: "separator" }] : []),
         { label: "Quit A Window", role: "quit" },
       ]),
     );
@@ -247,6 +271,7 @@ else {
     refreshTray = buildTray();
     createMain({ show: !hidden });
     await applyWallpaper();
+    watchForUpdates();
     app.on("activate", () => showMain());
   });
 

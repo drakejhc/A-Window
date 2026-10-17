@@ -1,5 +1,6 @@
-# Builds the desktop app for macOS, Windows and Linux and attaches the installers to a draft GitHub release.
-# Run it by pushing a version tag (git tag v1.0.0 && git push --tags), or from the Actions tab.
+# Builds the desktop app for macOS, Windows and Linux and publishes the installers as a GitHub release, which the
+# installed apps (Windows and Linux) pick up as an update. Run it by bumping "version" in package.json and pushing a
+# matching tag (git tag v1.2.0 && git push --tags).
 name: Release
 
 on:

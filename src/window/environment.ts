@@ -84,6 +84,9 @@ export class Environment implements Eased {
   moonAz = 0;
   moonPhase = 0;
   localHour = 12;
+  /** The city's local date, for things that happen on particular days (meteor showers, New Year). */
+  localMonth = 1;
+  localDay = 1;
   season: Season = "summer";
   dayness = 1;
   cloud = 0.3;
@@ -140,6 +143,8 @@ export class Environment implements Eased {
       this.moonAz = m.azimuth;
       this.moonPhase = m.phase;
       this.localHour = lp.hour + lp.minute / 60;
+      this.localMonth = lp.month;
+      this.localDay = lp.day;
       this.season = seasonFor(lp.month, c.lat);
       this.astroAt = date.getTime();
     }

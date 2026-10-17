@@ -185,7 +185,7 @@ function frontMarks(g: Geom, rng: Rng, d: Omit<PaintedData, "back" | "front">): 
     sy2 -= h * s;
   }
 
-  // Foreground silhouettes: a big-leafed plant on the left, a chair back on the right.
+  // A foreground silhouette: a big-leafed plant on the left.
   const pbx = Math.max(30 * s, g.x - g.w * 0.25), pby = H + 10;
   for (let i = 0; i < 13; i++) {
     const ang = -Math.PI / 2 - 1.0 + (i / 12) * 1.7 + (rng() - 0.5) * 0.25, len = g.h * (0.22 + rng() * 0.3), bend = (rng() - 0.5) * 0.6;
@@ -198,12 +198,6 @@ function frontMarks(g: Geom, rng: Rng, d: Omit<PaintedData, "back" | "front">): 
     m.push({ kind: "line", pts: stem, key: "plant", width: 3.5 * s });
     const la = ang + bend + 0.35 * Math.sign(Math.cos(ang) || 1) + (rng() - 0.5) * 0.5;
     m.push({ kind: "fill", pts: wb(leaf(tip[0], tip[1], g.h * (0.15 + rng() * 0.09), g.h * (0.05 + rng() * 0.02), la), 1.5), key: i % 3 ? "plant" : "plant2", angle: la, density: 50, edge: 0.3 });
-  }
-  const cx0 = g.x + g.w * 0.98, cw = Math.min(g.w * 0.32, W - cx0 + 40 * s), ctop = fy - g.h * 0.12;
-  if (cw > 60 * s) {
-    for (const xx of [cx0, cx0 + cw]) m.push({ kind: "fill", pts: wb(rect(xx - 9 * s, ctop, 18 * s, H - ctop + 20)), key: "chair", angle: Math.PI / 2, density: 40 });
-    m.push({ kind: "fill", pts: wb(rect(cx0 - 12 * s, ctop - 4 * s, cw + 24 * s, 22 * s)), key: "chair", density: 40 });
-    for (let i = 1; i < 4; i++) m.push({ kind: "fill", pts: wb(rect(cx0 + (cw * i) / 4 - 7 * s, ctop + 18 * s, 14 * s, H - ctop)), key: "chair", angle: Math.PI / 2, density: 40 });
   }
   return m;
 }
@@ -258,7 +252,7 @@ export const paintedStudy: RoomPack<PaintedData> = {
       lamp: { x: g.x + g.w * 0.19, y: by - g.h * 0.2, dx: dir.x, dy: dir.y, r: 30 * s, target },
       cat: { x: g.x + g.w * 0.66, y: by + (fy - by) * 0.3, u: (g.h / 576) * 1.25 },
       mug: { x: g.x + g.w * 0.5, top: by + (fy - by) * 0.42 },
-      turntable: { x: g.x + g.w * 1.05, y: by + (fy - by) * 0.6 },
+      turntable: { x: g.x + g.w * 1.03, y: by + (fy - by) * 0.55 },
     };
     const bm = backMarks(g, rng), fm = frontMarks(g, rng, d);
     const lit = { x: target[0], y: target[1] - g.h * 0.12 };

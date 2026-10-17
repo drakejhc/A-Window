@@ -68,11 +68,11 @@ export const paintedBedroom = paintedRoom<Layout>({
     const base = side((u0 + u1) / 2, 0.02);
     const ledge = g.y + g.h + f;
     const candles = [
-      { x: g.x + g.w * 0.16, y: ledge, h: 34 * s },
-      { x: g.x + g.w * 0.19, y: ledge, h: 22 * s },
-      { x: g.x + g.w * 0.135, y: ledge, h: 16 * s },
-      { x: g.x + g.w * 0.8, y: ledge, h: 26 * s },
-      { x: g.x + g.w * 0.83, y: ledge, h: 16 * s },
+      { x: g.x + g.w * 0.2, y: ledge, h: 34 * s },
+      { x: g.x + g.w * 0.23, y: ledge, h: 22 * s },
+      { x: g.x + g.w * 0.175, y: ledge, h: 16 * s },
+      { x: g.x + g.w * 0.765, y: ledge, h: 26 * s },
+      { x: g.x + g.w * 0.795, y: ledge, h: 16 * s },
     ];
     const bulbs: Pt[] = [];
     for (let i = 0; i <= 30; i++) {
@@ -117,8 +117,11 @@ export const paintedBedroom = paintedRoom<Layout>({
     m.push({ kind: "fill", pts: wb(mantel, 1), key: "mantel", density: 50, edge: 0.5 });
     // Logs in the grate.
     const [fx, fy] = l.fire.base;
-    for (const [dx, dy, w] of [[-0.25, 0, 0.55], [0.2, -0.02, 0.5], [0, -0.12, 0.45]] as const)
-      m.push({ kind: "fill", pts: wb(rect(fx + dx * l.fire.w - (w * l.fire.w) / 2, fy + dy * l.fire.h - 10 * s, w * l.fire.w, 10 * s), 1), key: "logs", density: 30 });
+    const lt = (10 * s) / l.fire.h;
+    for (const [dx, dy, w] of [[-0.25, 0, 0.55], [0.2, 0.02, 0.5], [0, 0.12, 0.45]] as const) {
+      const c = 0.5 + dx, t0 = 0.07 + dy;
+      m.push({ kind: "fill", pts: wb([onFire(l, c - w / 2, t0), onFire(l, c + w / 2, t0), onFire(l, c + w / 2, t0 + lt), onFire(l, c - w / 2, t0 + lt)], 1), key: "logs", density: 30 });
+    }
     // A warm rug on the floor in front of the fire, lying along the hearth: a rounded shape in floor coordinates
     // (u, how near; a, how far out from the wall) put into the room's perspective.
     const floor = (u: number, a: number): Pt => {
@@ -150,17 +153,17 @@ export const paintedBedroom = paintedRoom<Layout>({
     for (const c of l.candles) m.push({ kind: "fill", pts: wb(rect(c.x - 7 * s, c.y - c.h, 14 * s, c.h), 0.8), key: "wax", angle: Math.PI / 2, density: 20 });
     let by = ly;
     for (const [w, h, k] of [[90, 14, "b1"], [80, 11, "b2"], [86, 13, "blanket"]] as const) {
-      m.push({ kind: "fill", pts: wb(rect(g.x + g.w * 0.62 - (w * s) / 2, by - h * s, w * s, h * s), 1), key: k, density: 30, edge: 0.4 });
+      m.push({ kind: "fill", pts: wb(rect(g.x + g.w * 0.875 - (w * s) / 2, by - h * s, w * s, h * s), 1), key: k, density: 30, edge: 0.4 });
       by -= h * s;
     }
-    const blanket: Pt[] = [[g.x + g.w * 0.86, ly], [g.x + g.w * 0.97, ly], [g.x + g.w * 0.98, ly + f * 1.6], [g.x + g.w * 0.92, ly + f * 1.9], [g.x + g.w * 0.86, ly + f * 1.5]];
+    const blanket: Pt[] = [[g.x + g.w * 0.83, ly], [g.x + g.w * 0.92, ly], [g.x + g.w * 0.93, ly + f * 1.6], [g.x + g.w * 0.87, ly + f * 1.9], [g.x + g.w * 0.83, ly + f * 1.5]];
     m.push({ kind: "fill", pts: wb(blanket, 2), key: "blanket", angle: Math.PI / 2, density: 40, edge: 0.4 });
     for (let i = 0; i < 7; i++) {
-      const a = -Math.PI / 2 + (i - 3) * 0.32, x0 = g.x + g.w * 0.05, y0 = ly - 22 * s;
+      const a = -Math.PI / 2 + (i - 3) * 0.32, x0 = g.x + g.w * 0.08, y0 = ly - 22 * s;
       const leaf: Pt[] = [[x0, y0], [x0 + Math.cos(a - 0.2) * 40 * s, y0 + Math.sin(a - 0.2) * 40 * s], [x0 + Math.cos(a) * 62 * s, y0 + Math.sin(a) * 62 * s], [x0 + Math.cos(a + 0.2) * 40 * s, y0 + Math.sin(a + 0.2) * 40 * s]];
       m.push({ kind: "fill", pts: leaf, key: "plant", density: 30 });
     }
-    m.push({ kind: "fill", pts: wb(rect(g.x + g.w * 0.05 - 16 * s, ly - 26 * s, 32 * s, 26 * s), 1), key: "b1", density: 20, edge: 0.4 });
+    m.push({ kind: "fill", pts: wb(rect(g.x + g.w * 0.08 - 16 * s, ly - 26 * s, 32 * s, 26 * s), 1), key: "b1", density: 20, edge: 0.4 });
     // The fairy-light wire.
     m.push({ kind: "line", pts: l.bulbs.slice(0, 31), key: "wire", width: 1.4 * s, alpha: 0.9 });
     m.push({ kind: "line", pts: [l.bulbs[30]!, ...l.bulbs.slice(31)], key: "wire", width: 1.4 * s, alpha: 0.9 });
@@ -253,9 +256,19 @@ export const paintedBedroom = paintedRoom<Layout>({
   },
 
   player(g, l) {
-    return { x: g.x + g.w * 0.4, y: l.ledge };
+    // Centred in the middle pane, a little back from the ledge's front edge.
+    return { x: g.x + g.w * 0.5 + 14 * g.s, y: l.ledge - 3 * g.s };
   },
 });
+
+/** A point in the fireplace opening, on the right wall's plane: `a` across it from the far side (0) to the near side
+ *  (1), `b` up from the hearth (0) to the top of the opening (1). */
+function onFire(l: Layout, a: number, b: number): Pt {
+  const [p0, p1, p2, p3] = l.fire.quad as [Pt, Pt, Pt, Pt];
+  const lo: Pt = [p0[0] + (p3[0] - p0[0]) * a, p0[1] + (p3[1] - p0[1]) * a];
+  const hi: Pt = [p1[0] + (p2[0] - p1[0]) * a, p1[1] + (p2[1] - p1[1]) * a];
+  return [lo[0] + (hi[0] - lo[0]) * b, lo[1] + (hi[1] - lo[1]) * b];
+}
 
 /** Flames in the fireplace, flickering, with their glow spilling into the room. */
 function drawFire(ctx: CanvasRenderingContext2D, env: FrameEnv, l: Layout, s: number, level: number) {
@@ -273,17 +286,20 @@ function drawFire(ctx: CanvasRenderingContext2D, env: FrameEnv, l: Layout, s: nu
   for (const [layer, { n, spread, wk, hk, cols }] of tongues.entries()) {
     for (let i = 0; i < n; i++) {
       const u = i / (n - 1) - 0.5, ph = i * 2.3 + layer * 5;
-      const fh = h * hk * (0.6 + 0.4 * Math.abs(Math.sin(t * (1.7 + i * 0.31) + ph))) * (1 - Math.abs(u) * 0.6);
-      const x = bx + u * w * spread, y = by - 4 * s, sway = Math.sin(t * 2.7 + ph) * w * 0.04, hw = w * wk;
-      const grd = ctx.createLinearGradient(x, y, x, y - fh);
+      // Laid out across the opening's plane (a: across, b: up), so the fire turns with the wall.
+      const fh = hk * (0.6 + 0.4 * Math.abs(Math.sin(t * (1.7 + i * 0.31) + ph))) * (1 - Math.abs(u) * 0.6);
+      const x = 0.5 + u * spread, y = 0.09, sway = Math.sin(t * 2.7 + ph) * 0.04, hw = wk;
+      const P = (a: number, b: number) => onFire(l, a, b);
+      const [g0, g1] = [P(x, y), P(x, y + fh)];
+      const grd = ctx.createLinearGradient(g0[0], g0[1], g1[0], g1[1]);
       grd.addColorStop(0, rgba(cols[0], 0.95 * level));
       grd.addColorStop(0.6, rgba(cols[1], 0.75 * level));
       grd.addColorStop(1, rgba(cols[1], 0));
       ctx.fillStyle = grd;
       ctx.beginPath();
-      ctx.moveTo(x - hw, y);
-      ctx.bezierCurveTo(x - hw * 1.1, y - fh * 0.45, x + sway - hw * 0.3, y - fh * 0.75, x + sway, y - fh);
-      ctx.bezierCurveTo(x + sway + hw * 0.4, y - fh * 0.7, x + hw * 1.1, y - fh * 0.4, x + hw, y);
+      ctx.moveTo(...P(x - hw, y));
+      ctx.bezierCurveTo(...P(x - hw * 1.1, y + fh * 0.45), ...P(x + sway - hw * 0.3, y + fh * 0.75), ...P(x + sway, y + fh));
+      ctx.bezierCurveTo(...P(x + sway + hw * 0.4, y + fh * 0.7), ...P(x + hw * 1.1, y + fh * 0.4), ...P(x + hw, y));
       ctx.fill();
     }
   }

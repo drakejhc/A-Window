@@ -1,6 +1,7 @@
 /** Owns one canvas and draws the parts every window shares: sky, stars, sun and moon, clouds, falling weather,
  *  lightning and the glass. A window pack draws the room and the view. */
 import type { Environment } from "./environment";
+import { SkyLife } from "./sky-life";
 import { hologram } from "./packs/painted-room";
 import type { AnyRoom, AnyView, FrameEnv, Geom, Painter } from "./types";
 import { clamp, makeRng, mixRGB, rgba, smooth, type RGB, type Rng } from "./util";
@@ -144,6 +145,7 @@ export class Renderer {
   private dropSprite = makeSprite(false);
   private flakeSprite = makeSprite(true);
   private stars: Star[] = [];
+  private life = new SkyLife();
   private clouds: Cloud[] = [];
   private rain: Drop[] = [];
   private snow: Flake[] = [];
@@ -331,9 +333,13 @@ export class Renderer {
     this.drawStars(env);
     this.drawAurora(env);
     this.drawCelestial(env);
+    const par = (depth: number) => this.par(depth);
+    this.life.drawHigh(ctx, env, g, par);
     if (this.view.painted) this.drawSoftClouds(env);
     else this.drawClouds(env);
+    this.life.drawMid(ctx, env, g, par);
     this.view.drawLandscape(ctx, env, g, this.viewData, this.P);
+    this.life.drawNear(ctx, env, g, this.view.ambience.crickets >= 0.3);
     this.drawFog(env);
     this.drawDrifters(env);
     this.drawPrecip(env);

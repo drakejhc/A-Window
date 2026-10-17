@@ -1,7 +1,7 @@
 {
   "name": "a-window",
   "productName": "A Window",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "description": "A calm day planner set inside a live window that follows the real weather, time of day and season.",
@@ -16,11 +16,13 @@
     "release": "vite build && electron-builder --publish always"
   },
   "dependencies": {
+    "electron-updater": "^6.8.9",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "three": "0.186.1"
   },
   "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "6.10.0",
     "@testing-library/react": "16.3.3",
     "@types/react": "19.2.17",
@@ -90,7 +92,7 @@
     },
     "publish": {
       "provider": "github",
-      "releaseType": "draft"
+      "releaseType": "release"
     }
   },
   "trustedDependencies": [
