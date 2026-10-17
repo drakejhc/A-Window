@@ -4,8 +4,8 @@
 
 **Worst moments to fix**
 - [ ] The painted valley's mountains are a regular zigzag with identical snow caps.
-- [ ] The painted rooms look flat by day: no sunlight comes into the room, and golden hour isn't golden.
-  (Midnight study: done. Cozy bedroom: to do.)
+- [x] The painted rooms look flat by day: no sunlight comes into the room, and golden hour isn't golden.
+  Both painted rooms now have window light and a warm golden hour (`packs/window-light.ts`).
 - [ ] The art styles clash. The 3D rooms look out on a flat cartoon city, and the older views don't match the
   painted rooms.
 
@@ -16,7 +16,7 @@
 - [ ] Big screens sit dark for seconds while a painted room paints.
 
 **Then build, in order**
-1. [ ] The same window light in the Cozy bedroom.
+1. [x] The same window light in the Cozy bedroom.
 2. [ ] Painted views behind the 3D rooms, and redrawn valley mountains.
 3. [ ] The glass at night: a faint reflection of the room, condensation and frost.
 4. [ ] Saved scenes with a schedule, plus a separate volume for each sound.

@@ -62,7 +62,7 @@ async function shoot(browser, s) {
     localStorage.setItem("a-window:window-v1", JSON.stringify({ city, room, view, preset, sound: false, volume: 0.6 }));
   }, { city: CITY, room: s.room, view: s.view, preset: s.preset });
   await page.goto(URL + (s.query ?? ""));
-  await page.waitForTimeout(s.three ? 15000 : 9000);
+  await page.waitForTimeout(s.three ? 15000 : s.size && s.size.width > 2000 ? 30000 : 12000);
   for (const k of s.keys ?? []) {
     await page.keyboard.press(k);
     await page.waitForTimeout(1200);

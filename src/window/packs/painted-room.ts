@@ -6,6 +6,7 @@ import type { AmbienceWeights, FrameEnv, Geom, RoomPack } from "../types";
 import { clamp, makeRng, mixRGB, rgba, scaleRGB, type RGB, type Rng } from "../util";
 import { brush, free, grain, layer, trace, type Pt } from "./paint";
 import { dayLevel, glow } from "./props";
+import { lightCanvases, windowLight, type Glazing, type LightCanvases, type LightPlane, type Occluder } from "./window-light";
 
 export type Palette = Record<string, RGB>;
 /** A shape to paint: a brushed fill, or a painted line. */
@@ -35,10 +36,19 @@ export type PaintedSpec<L> = {
   soften?: number;
   /** The panes of the painted window (top row first), so frost and settled snow sit in them. */
   panes?(g: Geom): Geom["panes"];
+  /** Where sunlight and moonlight through the window can land, and anything nearer that mustn't be lit. */
+  light?(g: Geom, l: L): { glazing: Glazing; planes: LightPlane[]; occluders?: Occluder[] };
 };
 
 type Layers = { night: HTMLCanvasElement; day: HTMLCanvasElement; lamp: HTMLCanvasElement };
-export type PaintedRoomData<L> = { l: L; back: Layers; front: Layers; player: { x: number; y: number } | null; panes?: Geom["panes"] };
+export type PaintedRoomData<L> = {
+  l: L;
+  back: Layers;
+  front: Layers;
+  player: { x: number; y: number } | null;
+  panes?: Geom["panes"];
+  light: { glazing: Glazing; planes: LightPlane[]; canvases: LightCanvases } | null;
+};
 
 export const defaultLevel = (env: FrameEnv) => clamp(Math.max(env.lamp * 1.1, 0.6 * (1 - dayLevel(env))) + 0.15);
 
@@ -114,7 +124,9 @@ export function paintedRoom<L>(spec: PaintedSpec<L>): RoomPack<PaintedRoomData<L
       mask(g, back.lamp, lights.back);
       mask(g, front.lamp, lights.front);
       const panes = spec.panes?.(g);
-      return { l, back, front, player: spec.player?.(g, l) ?? null, ...(panes ? { panes } : {}) };
+      const ls = spec.light?.(g, l);
+      const light = ls ? { glazing: ls.glazing, planes: ls.planes, canvases: lightCanvases(g, ls.occluders) } : null;
+      return { l, back, front, player: spec.player?.(g, l) ?? null, light, ...(panes ? { panes } : {}) };
     },
 
     drawRoom(ctx, env, g, d) {
@@ -124,6 +136,7 @@ export function paintedRoom<L>(spec: PaintedSpec<L>): RoomPack<PaintedRoomData<L
     drawInterior(ctx, env, g, d) {
       const { W, H } = g, on = level(env);
       blend(ctx, g, d.front, dayLevel(env), on);
+      if (d.light) windowLight(ctx, env, g, d.light.glazing, d.light.planes, d.light.canvases);
       spec.overlay(ctx, env, g, d.l, on);
       if (d.player) recordPlayer(ctx, env, d.player.x, d.player.y, g.s, on);
       const v = ctx.createRadialGradient(W / 2, g.y + g.h * 0.6, Math.min(W, H) * 0.32, W / 2, g.y + g.h * 0.6, Math.max(W, H) * 0.8);

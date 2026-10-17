@@ -3,9 +3,10 @@
  *  falls away into cool, soft shadow. The room is painted once in night, day and lamplight colours, and each
  *  frame blends those paintings for the real time of day, then adds the few things that move. */
 import type { FrameEnv, Geom, RoomPack } from "../types";
-import { clamp, makeRng, mixRGB, rgba, smooth, type RGB, type Rng } from "../util";
+import { clamp, makeRng, rgba, type RGB, type Rng } from "../util";
 import { brush, fadeOut, free, grain, layer, rect, trace, wobble, type Pt } from "./paint";
 import { dayLevel, glow } from "./props";
+import { lightCanvases, windowLight, type Glazing, type LightCanvases, type LightPlane } from "./window-light";
 
 type Key =
   | "wall" | "wallDeep" | "reveal" | "revealDeep" | "shelf" | "frame" | "sill" | "deskTop" | "deskFront" | "deskEdge"
@@ -51,9 +52,8 @@ export type PaintedData = {
   turntable: { x: number; y: number };
   /** The desk top's back edge (just below the sill) and front edge. */
   desk: { by: number; fy: number };
-  /** Half-size canvases for window light: a scratch to draw it in, and a mask of the foreground plant, which is
-   *  nearer than the desk and mustn't be lit by it. */
-  light: { scratch: HTMLCanvasElement; mask: HTMLCanvasElement };
+  /** Canvases for window light, with the foreground plant masked out (it's nearer than the desk). */
+  light: LightCanvases;
 };
 
 /** A thick stroke as a polygon, so it can be brushed like any other shape. */
@@ -261,20 +261,7 @@ export const paintedStudy: RoomPack<PaintedData> = {
       desk: { by, fy },
     };
     const bm = backMarks(g, rng), fm = frontMarks(g, rng, d);
-    const mask = layer(g.W / 2, g.H / 2, 1);
-    mask.x.scale(0.5, 0.5);
-    mask.x.fillStyle = mask.x.strokeStyle = "#000";
-    mask.x.lineCap = mask.x.lineJoin = "round";
-    for (const mk of fm.filter((m) => m.key === "plant" || m.key === "plant2")) {
-      mask.x.beginPath();
-      mk.pts.forEach(([px, py], i) => (i ? mask.x.lineTo(px, py) : mask.x.moveTo(px, py)));
-      if (mk.kind === "fill") mask.x.fill();
-      else {
-        mask.x.lineWidth = mk.width * 1.5;
-        mask.x.stroke();
-      }
-    }
-    const light = { scratch: layer(g.W / 2, g.H / 2, 1).c, mask: mask.c };
+    const light = lightCanvases(g, fm.filter((m) => m.key === "plant" || m.key === "plant2"));
     const lit = { x: target[0], y: target[1] - g.h * 0.12 };
     const back = { night: paint(g, bm, NIGHT, 11, 1.6), day: paint(g, bm, DAY, 11, 1.6), lamp: paint(g, bm, LAMP, 11, 1.6) };
     shadeWall(g, back.night.x, NIGHT);
@@ -297,7 +284,7 @@ export const paintedStudy: RoomPack<PaintedData> = {
   drawInterior(ctx, env, g, d) {
     const { W, H, s } = g, t = env.t, on = lampLevel(env);
     blend(ctx, env, g, d.front);
-    windowLight(ctx, env, g, d);
+    deskLight(ctx, env, g, d);
     const L = d.lamp;
 
     // A faint cone of light from the shade, and the glow at its mouth.
@@ -349,100 +336,21 @@ export const paintedStudy: RoomPack<PaintedData> = {
   },
 };
 
-// How deep the desk is, as a fraction of the window's height, for working out how far light reaches across it.
+// How deep the desk is, in window-heights, for working out how far light reaches across it.
 const DESK_DEPTH = 0.55;
-const motes = Array.from({ length: 26 }, (_, i) => ({ u: (i * 0.618) % 1, v: (i * 0.371) % 1, h: (i * 0.437) % 1, ph: i * 1.7 }));
 
-/** Sunlight (or moonlight) through the window, falling on the desk: a patch the shape of the panes, skewed by
- *  where the sun really is and longer when it's low, with the bars' shadows across it and dust turning in the
- *  beam. Warm white by day, amber at golden hour, a faint cool patch under a bright moon. */
-function windowLight(ctx: CanvasRenderingContext2D, env: FrameEnv, g: Geom, d: PaintedData) {
-  const facing = env.city.lat >= 0 ? 180 : 0;
-  const clear = Math.pow(clamp(1 - env.cloud * 1.1), 1.5) * (1 - env.fog) * (1 - env.rain * 0.8);
-  const moonFull = 1 - Math.abs(env.moonPhase - 0.5) * 2;
-  const sources = [
-    { alt: env.sunAlt, az: env.sunAz, k: smooth(0.5, 6, env.sunAlt) * clear, color: mixRGB([255, 232, 196], [255, 160, 80], env.golden) },
-    { alt: env.moonAlt, az: env.moonAz, k: smooth(2, 10, env.moonAlt) * moonFull * env.night * clear * 0.45, color: [170, 190, 255] as RGB },
-  ];
-  const { by, fy } = d.desk, W = g.W;
-  const lx = d.light.scratch.getContext("2d")!;
-  let lit = false;
-  // Where a point on the desk's back edge (x) appears at depth v (0 back, 1 front), following the desk's widening.
-  const backC = g.x + g.w / 2, spread = (W + 80) / (g.w * 1.9);
-  const at = (x: number, v: number): Pt => {
-    const front = W / 2 + (x - backC) * spread;
-    return [x + (front - x) * v, by + (fy - by) * v];
+/** Window light on the desk, which sits level with the sill and widens toward us. */
+function deskLight(ctx: CanvasRenderingContext2D, env: FrameEnv, g: Geom, d: PaintedData) {
+  const { by, fy } = d.desk, backC = g.x + g.w / 2, spread = (g.W + 80) / (g.w * 1.9);
+  const desk: LightPlane = {
+    drop: 0,
+    z0: 0,
+    z1: DESK_DEPTH,
+    at: (x, v) => [x + (g.W / 2 + (x - backC) * spread - x) * v, by + (fy - by) * v],
   };
-  for (const src of sources) {
-    const rel = ((src.az - facing + 540) % 360) - 180;
-    const k = src.k * (1 - smooth(70, 85, Math.abs(rel)));
-    if (k < 0.02) continue;
-    const tanAlt = Math.tan((Math.max(src.alt, 1) * Math.PI) / 180);
-    // Light reaches as far across the desk as the window's top lets it, and slides sideways with the azimuth.
-    const reach = Math.min(1, 1 / (tanAlt * DESK_DEPTH));
-    const slide = -Math.tan((rel * Math.PI) / 180) * DESK_DEPTH * g.h;
-    // The transom's shadow lands where light through it reaches the desk.
-    const transom = (g.y + g.h - g.my) / g.h / (tanAlt * DESK_DEPTH);
-    const half = g.mull / 2;
-    const panes: [number, number][] = [[g.x, g.mx - half], [g.mx + half, g.x + g.w]];
-    const bands: [number, number][] = transom < reach ? [[0, transom - 0.03], [transom + 0.03, reach]] : [[0, reach]];
-    if (!lit) {
-      lx.setTransform(1, 0, 0, 1, 0, 0);
-      lx.clearRect(0, 0, d.light.scratch.width, d.light.scratch.height);
-      lx.setTransform(0.5, 0, 0, 0.5, 0, 0);
-      lit = true;
-    }
-    for (const [x0, x1] of panes)
-      for (const [v0, v1] of bands) {
-        const corner = (x: number, v: number) => at(x + slide * v, v);
-        const grd = lx.createLinearGradient(0, by + (fy - by) * v0, 0, by + (fy - by) * v1);
-        grd.addColorStop(0, rgba(src.color, k));
-        grd.addColorStop(1, rgba(src.color, k * 0.55));
-        lx.fillStyle = grd;
-        // Two passes, one slightly larger and fainter, for a soft edge.
-        for (const [grow, a] of [[3 * g.s, 0.45], [0, 1]] as const) {
-          lx.globalAlpha = a;
-          trace(lx, [corner(x0 - grow, v0), corner(x1 + grow, v0), corner(x1 + grow, v1), corner(x0 - grow, v1)]);
-          lx.fill();
-        }
-      }
-    lx.globalAlpha = 1;
-    ctx.save();
-    // Dust turning slowly in the beam, above the patch.
-    ctx.globalCompositeOperation = "lighter";
-    for (const m of motes) {
-      const v = m.v * reach, x = g.x + ((m.u + Math.sin(env.t * 0.05 + m.ph) * 0.02 + 1) % 1) * g.w;
-      const [px, py] = at(x + slide * v, v);
-      const y = py - (0.05 + m.h * 0.3) * g.h + Math.sin(env.t * 0.13 + m.ph) * 6 * g.s;
-      const tw = 0.5 + 0.5 * Math.sin(env.t * 0.9 + m.ph * 3);
-      ctx.fillStyle = rgba(src.color, 0.35 * k * tw);
-      ctx.fillRect(px, y, 1.6 * g.s, 1.6 * g.s);
-    }
-    ctx.restore();
-  }
-  if (lit) {
-    // Cut out the plant, then lay the light over the room: overlay for colour, a touch of screen for brightness.
-    lx.setTransform(1, 0, 0, 1, 0, 0);
-    lx.globalCompositeOperation = "destination-out";
-    lx.drawImage(d.light.mask, 0, 0);
-    lx.globalCompositeOperation = "source-over";
-    ctx.save();
-    for (const [mode, alpha] of [["overlay", 0.5], ["screen", 0.1]] as const) {
-      ctx.globalCompositeOperation = mode;
-      ctx.globalAlpha = alpha;
-      ctx.drawImage(d.light.scratch, 0, 0, g.W, g.H);
-    }
-    ctx.restore();
-  }
-  // Golden hour warms the whole room, not only the patch.
-  const warm = env.golden * clear * smooth(-2, 2, env.sunAlt);
-  if (warm > 0.02) {
-    ctx.save();
-    ctx.globalCompositeOperation = "soft-light";
-    ctx.fillStyle = rgba([255, 150, 70], 0.35 * warm);
-    ctx.fillRect(0, 0, g.W, g.H);
-    ctx.restore();
-  }
+  const half = g.mull / 2, transom = (g.y + g.h - g.my) / g.h, m = half / g.h;
+  const glazing: Glazing = { cols: [[g.x, g.mx - half], [g.mx + half, g.x + g.w]], rows: [[0, transom - m], [transom + m, 1]] };
+  windowLight(ctx, env, g, glazing, [desk], d.light);
 }
 
 /** The lamp is nearly always on in this room: brightest at night, still glowing on a grey day. */

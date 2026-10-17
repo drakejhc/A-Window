@@ -255,6 +255,21 @@ export const paintedBedroom = paintedRoom<Layout>({
     }));
   },
 
+  light(g, l) {
+    // Three tall panes under a transom, as in front(). Light lands on the deep ledge, level with the sill, and past
+    // it on the bed and floor, a little lower and spreading toward us.
+    const m = g.mull / 2, t = 0.78, mh = m / g.h;
+    const cols: [number, number][] = [0, 1, 2].map((i) => [g.x + (g.w * i) / 3 + (i ? m : 0), g.x + (g.w * (i + 1)) / 3 - (i < 2 ? m : 0)]);
+    const front = l.ledge + g.frame * 0.4, below = l.ledge + g.frame * 1.5, cx = g.x + g.w / 2;
+    return {
+      glazing: { cols, rows: [[0, t - mh], [t + mh, 1]] },
+      planes: [
+        { drop: 0, z0: 0, z1: 0.18, at: (x, v) => [cx + (x - cx) * (1 + 0.04 * v), g.y + g.h + (front - g.y - g.h) * v] },
+        { drop: 0.3, z0: 0.2, z1: 1.6, at: (x, v) => [l.vp[0] + (x - l.vp[0]) * (1 + 0.9 * v), below + (g.H - below) * v] },
+      ],
+    };
+  },
+
   player(g, l) {
     // Centred in the middle pane, a little back from the ledge's front edge.
     return { x: g.x + g.w * 0.5 + 14 * g.s, y: l.ledge - 3 * g.s };
