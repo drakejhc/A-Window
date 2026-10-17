@@ -84,10 +84,10 @@ describe("auto room", () => {
     const { CITIES } = await import("@/window/cities");
     const at = (id: string) => autoRoom(CITIES.find((c) => c.id === id)!);
     expect(at("tromso")).toBe("cabin3d");
-    expect(at("kyoto")).toBe("japanese");
+    expect(at("kyoto")).toBe("painted");
     expect(at("lisbon")).toBe("mediterranean");
     expect(at("vancouver")).toBe("listening");
-    expect(sceneFor({ view: "auto", room: "auto" }, CITIES.find((c) => c.id === "kyoto")!).room3d).toBe("japanese");
+    expect(sceneFor({ view: "auto", room: "auto" }, CITIES.find((c) => c.id === "tromso")!).room3d).toBe("cabin");
     expect(sceneFor({ view: "auto", room: "painted" }, CITIES.find((c) => c.id === "kyoto")!).room3d).toBeNull();
   });
 });

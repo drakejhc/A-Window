@@ -28,7 +28,6 @@ export const ROOMS: { id: string; name: string; pack: AnyRoom; three?: string; v
   { id: "painted-bedroom", name: "Cozy bedroom (painted)", pack: paintedBedroom, view: "painted-valley" },
   { id: "listening", name: "Listening room (3D)", pack: paintedStudy, three: "listening", view: "painted-city" },
   { id: "cabin3d", name: "Nordic cabin (3D)", pack: paintedBedroom, three: "cabin", view: "painted-valley" },
-  { id: "japanese", name: "Japanese room (3D)", pack: paintedStudy, three: "japanese", view: "painted-city" },
   { id: "mediterranean", name: "Mediterranean (3D)", pack: paintedStudy, three: "mediterranean", view: "painted-city" },
 ];
 export type WeatherStatus = "loading" | "live" | "stale" | "offline" | "preset";
@@ -76,6 +75,8 @@ const ROOM_ALIASES: Record<string, string> = {
   minimal: "painted",
   attic: "listening",
   cabin: "cabin3d",
+  // The Japanese room's plain white boxes didn't hold up next to the painted rooms.
+  japanese: "painted",
 };
 
 function loadPrefs(): WindowPrefs {
@@ -113,12 +114,12 @@ function loadPrefs(): WindowPrefs {
 
 const EAST_ASIA = /^Asia\/(Tokyo|Seoul|Pyongyang|Shanghai|Taipei|Hong_Kong|Macau)$/;
 
-/** The room Auto picks for a city: a Nordic cabin in the far north and south, a Japanese room in East Asia, a
- *  Mediterranean room where it's warm and sunny, and the Listening room everywhere else. */
+/** The room Auto picks for a city: a Nordic cabin in the far north and south, the Midnight study in East Asia's
+ *  big cities, a Mediterranean room where it's warm and sunny, and the Listening room everywhere else. */
 export function autoRoom(city: City) {
   const lat = Math.abs(city.lat);
   if (lat >= 55) return "cabin3d";
-  if (EAST_ASIA.test(city.tz)) return "japanese";
+  if (EAST_ASIA.test(city.tz)) return "painted";
   if (lat < 42) return "mediterranean";
   return "listening";
 }

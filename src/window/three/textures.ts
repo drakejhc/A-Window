@@ -122,30 +122,6 @@ export function grooves() {
   return c;
 }
 
-/** A quiet print for the wall: a low sun over layered hills, on warm paper. */
-export function print(seed = 3) {
-  const w = 600, h = 760, [c, x] = canvas(w, h), rng = makeRng(seed);
-  x.fillStyle = "#efe6d6";
-  x.fillRect(0, 0, w, h);
-  x.fillStyle = "#c8693f";
-  x.beginPath();
-  x.arc(w * 0.62, h * 0.38, w * 0.17, 0, Math.PI * 2);
-  x.fill();
-  const hills: RGB[] = [[150, 160, 150], [96, 116, 112], [62, 80, 84], [40, 52, 58]];
-  hills.forEach((col, i) => {
-    x.fillStyle = css(col);
-    x.beginPath();
-    const base = h * (0.5 + i * 0.1);
-    x.moveTo(0, h);
-    for (let px = 0; px <= w; px += 10) x.lineTo(px, base - Math.sin(px * 0.008 + i * 1.7 + rng()) * 30 - Math.sin(px * 0.021 + i) * 12);
-    x.lineTo(w, h);
-    x.fill();
-  });
-  grain(x, w, h, 14, seed);
-  return c;
-}
-
-/** Cover art for the record that sits on the player when nothing is playing. */
 export function defaultSleeve() {
   const S = 512, [c, x] = canvas(S, S);
   const g = x.createLinearGradient(0, 0, S, S);
@@ -233,27 +209,6 @@ export function logs(base: RGB, n = 6, seed = 12) {
   return c;
 }
 
-/** Woven tatami with a dark cloth border along the long edges. */
-export function tatami() {
-  const w = 512, h = 1024, [c, x] = canvas(w, h), rng = makeRng(31);
-  x.fillStyle = "#c9c08e";
-  x.fillRect(0, 0, w, h);
-  for (let y = 0; y < h; y += 3) {
-    x.fillStyle = `rgba(${90 + rng() * 40},${100 + rng() * 30},${50 + rng() * 20},${0.15 + rng() * 0.15})`;
-    x.fillRect(0, y, w, 1.5);
-  }
-  for (let xx = 0; xx < w; xx += 16) {
-    x.fillStyle = "rgba(60,60,30,0.12)";
-    x.fillRect(xx, 0, 1, h);
-  }
-  x.fillStyle = "#22201c";
-  x.fillRect(0, 0, 26, h);
-  x.fillRect(w - 26, 0, 26, h);
-  grain(x, w, h, 10, 32);
-  return c;
-}
-
-/** Square terracotta tiles with pale grout. */
 export function tiles(n = 4, seed = 41) {
   const S = 1024, [c, x] = canvas(S, S), rng = makeRng(seed), t = S / n;
   x.fillStyle = "#d8c8b0";
@@ -273,25 +228,6 @@ export function tiles(n = 4, seed = 41) {
   return c;
 }
 
-/** Shoji paper: warm white with faint fibres. */
-export function paper(seed = 51) {
-  const S = 256, [c, x] = canvas(S, S), rng = makeRng(seed);
-  x.fillStyle = "#f3eee2";
-  x.fillRect(0, 0, S, S);
-  for (let i = 0; i < 120; i++) {
-    x.strokeStyle = `rgba(180,160,120,${0.08 + rng() * 0.1})`;
-    x.lineWidth = 0.6;
-    x.beginPath();
-    const px = rng() * S, py = rng() * S;
-    x.moveTo(px, py);
-    x.quadraticCurveTo(px + (rng() - 0.5) * 30, py + (rng() - 0.5) * 30, px + (rng() - 0.5) * 50, py + (rng() - 0.5) * 50);
-    x.stroke();
-  }
-  grain(x, S, S, 6, seed);
-  return c;
-}
-
-/** Louvred shutter slats, painted. */
 export function louvres(paint: RGB, n = 18) {
   const w = 256, h = 512, [c, x] = canvas(w, h), sh = h / n;
   for (let i = 0; i < n; i++) {
@@ -306,31 +242,6 @@ export function louvres(paint: RGB, n = 18) {
   return c;
 }
 
-/** A hanging scroll: mountains in ink wash on silk, with a mounting border. */
-export function inkScroll(seed = 71) {
-  const w = 300, h = 900, [c, x] = canvas(w, h), rng = makeRng(seed);
-  x.fillStyle = "#6f5b44";
-  x.fillRect(0, 0, w, h);
-  x.fillStyle = "#efe7d6";
-  x.fillRect(24, 120, w - 48, h - 260);
-  for (let i = 0; i < 4; i++) {
-    x.fillStyle = `rgba(40,40,44,${0.18 + i * 0.12})`;
-    x.beginPath();
-    const base = 300 + i * 120;
-    x.moveTo(24, base + 200);
-    for (let px = 24; px <= w - 24; px += 6) x.lineTo(px, base - Math.abs(Math.sin(px * 0.02 + i * 2 + rng())) * (80 - i * 12) - rng() * 6);
-    x.lineTo(w - 24, base + 200);
-    x.fill();
-  }
-  x.fillStyle = "#efe7d6";
-  x.fillRect(24, h - 140 - 60, w - 48, 60);
-  x.fillStyle = "#b03a2e";
-  x.fillRect(w - 70, h - 230, 18, 18);
-  grain(x, w, h, 10, seed);
-  return c;
-}
-
-/** Cable knit, for cushions and throws. */
 export function knit(base: RGB, seed = 81) {
   const S = 256, [c, x] = canvas(S, S);
   x.fillStyle = css(base);

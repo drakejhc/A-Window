@@ -37,7 +37,9 @@
 **And the big options (all wanted; ask before starting each, as they're L-sized)**
 - [ ] New painted rooms or views: a rainy café, a train compartment, a lighthouse, a sea cliff, a Tokyo alley.
 - [ ] "Make it yours": swapping props, colours and the cat.
-- [ ] The 3D rooms: retire them, or restyle them to match the painted ones (retire the Japanese room first).
+- [x] The 3D rooms: retire them, or restyle them to match the painted ones (retire the Japanese room first). The
+  Japanese room is retired (saved choices move to the Midnight study, which Auto now picks in East Asia); the
+  Listening room, cabin and Mediterranean room stay, each looking out on a painted view.
 - [x] Background painting: painting rooms off the main thread, so the app stays smooth while they paint. A Web
   Worker paints with OffscreenCanvas and the page replays its layers (`paint-worker.ts`).
 
