@@ -1,6 +1,7 @@
 /** Owns one canvas and draws the parts every window shares: sky, stars, sun and moon, clouds, falling weather,
  *  lightning and the glass. A window pack draws the room and the view. */
 import type { Environment } from "./environment";
+import { Glass } from "./glass";
 import { SkyLife } from "./sky-life";
 import { paintDraft } from "./packs/paint";
 import { hologram } from "./packs/painted-room";
@@ -149,6 +150,7 @@ export class Renderer {
   private flakeSprite = makeSprite(true);
   private stars: Star[] = [];
   private life = new SkyLife();
+  private glass = new Glass();
   private clouds: Cloud[] = [];
   private rain: Drop[] = [];
   private snow: Flake[] = [];
@@ -278,6 +280,7 @@ export class Renderer {
     window.clearTimeout(this.fullBuild);
     paintDraft(build);
     this.fullBuild = window.setTimeout(() => key === this.builtFor && build(), 80);
+    if (g.framed) this.glass.build(g, this.panes());
   }
 
   private spawnRain(initial: boolean, rng: Rng = Math.random): Drop {
@@ -364,7 +367,13 @@ export class Renderer {
     if (g.framed) {
       this.room.drawInterior(ctx, env, g, this.roomData, this.P);
       this.drawTurntable(env);
+      this.glass.capture(this.canvas, this.dpr, env, g);
     }
+  }
+
+  /** Wipes the mist off the glass at a point, in CSS pixels on the canvas. */
+  wipe(x: number, y: number) {
+    if (this.geom?.framed) this.glass.wipe(x, y);
   }
 
   /** A record player on the sill while music plays: the album art spins on the label, and the arm lowers. */
@@ -766,6 +775,7 @@ export class Renderer {
       dt = env.dt;
     const wet = clamp(env.rain * 1.1);
     const scale = Math.max(0.8, g.s * 1.4);
+    if (g.framed) this.glass.drawReflection(ctx, env, g);
     const area = (g.w * g.h) / (700 * 540);
     const target = Math.round(wet * 220 * Math.min(area, 3));
 
@@ -871,8 +881,9 @@ export class Renderer {
       );
     ctx.globalAlpha = 1;
 
-    // Frost creeping in from the corners below freezing.
-    if (env.temp < 0) {
+    // Mist and frost on the glass; without a frame (a 3D room's view), just frost creeping in from the corners.
+    if (g.framed) this.glass.drawSurface(ctx, env, g);
+    else if (env.temp < 0) {
       const k = clamp(-env.temp / 12) * 0.5;
       for (const pn of this.panes()) {
         const R = Math.min(pn.w, pn.h) * 0.45;

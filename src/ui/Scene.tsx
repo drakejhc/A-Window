@@ -93,7 +93,11 @@ function Scene2D({ align, framed, view, room, onReady }: { align: number; framed
   }, [view, room, onReady]);
   useEffect(() => renderer.current?.setAlign(align), [align]);
 
-  return <canvas ref={ref} className="scene" role="img" aria-label={label(snap.city.name)} />;
+  // Dragging over misted glass wipes it clear.
+  const wipe = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.buttons & 1) renderer.current?.wipe(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+  };
+  return <canvas ref={ref} className="scene" role="img" aria-label={label(snap.city.name)} onPointerDown={wipe} onPointerMove={wipe} />;
 }
 
 function Scene3D({ design, view: viewPack, align, onReady, onFail }: { design: string; view: AnyView; align: number; onReady: () => void; onFail: () => void }) {
