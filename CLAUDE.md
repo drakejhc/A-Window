@@ -8,3 +8,5 @@
 - Shipping to installed apps: the Windows and Linux apps update themselves from this repo's GitHub releases. To
   release, bump `version` in package.json, commit, then `git tag vX.Y.Z && git push awindow vX.Y.Z`; the Release
   workflow builds and publishes it. The version must go up, or installed apps won't see the update.
+- The product's agreed objective is the checklist at the top of `docs/roadmap.md`. Work toward it, tick items off
+  as they ship, and keep the log at the bottom of that file current.

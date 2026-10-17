@@ -1,5 +1,33 @@
 # A Window: critique and roadmap
 
+## The objective (agreed with the owner: do everything on this list)
+
+**Worst moments to fix**
+- [ ] The painted valley's mountains are a regular zigzag with identical snow caps.
+- [ ] The painted rooms look flat by day: no sunlight comes into the room, and golden hour isn't golden.
+  (Midnight study: done. Cozy bedroom: to do.)
+- [ ] The art styles clash. The 3D rooms look out on a flat cartoon city, and the older views don't match the
+  painted rooms.
+
+**Smaller issues to fix**
+- [ ] The bed is the bedroom's largest and weakest shape.
+- [ ] The planner darkens the whole scene evenly.
+- [ ] Very wide screens show the window small in the middle.
+- [ ] Big screens sit dark for seconds while a painted room paints.
+
+**Then build, in order**
+1. [ ] The same window light in the Cozy bedroom.
+2. [ ] Painted views behind the 3D rooms, and redrawn valley mountains.
+3. [ ] The glass at night: a faint reflection of the room, condensation and frost.
+4. [ ] Saved scenes with a schedule, plus a separate volume for each sound.
+5. [ ] Saving painted rooms between launches so big screens don't sit dark while repainting.
+
+**And the big options (all wanted; ask before starting each, as they're L-sized)**
+- [ ] New painted rooms or views: a rainy café, a train compartment, a lighthouse, a sea cliff, a Tokyo alley.
+- [ ] "Make it yours": swapping props, colours and the cat.
+- [ ] The 3D rooms: retire them, or restyle them to match the painted ones (retire the Japanese room first).
+- [ ] Background painting: painting rooms off the main thread, so the app stays smooth while they paint.
+
 Following `docs/prompts/next-level.md`. Screenshots come from `scripts/screenshots.cjs` (82 shots: both painted
 rooms at dawn, midday, golden hour, dusk and night × clear, overcast, rain, snow and fog; room and view swaps; the
 four 3D rooms; planner, Focus, open view, narrow and ultra-wide). Vancouver, 17 October.
