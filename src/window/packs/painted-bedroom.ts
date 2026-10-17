@@ -119,11 +119,15 @@ export const paintedBedroom = paintedRoom<Layout>({
     const [fx, fy] = l.fire.base;
     for (const [dx, dy, w] of [[-0.25, 0, 0.55], [0.2, -0.02, 0.5], [0, -0.12, 0.45]] as const)
       m.push({ kind: "fill", pts: wb(rect(fx + dx * l.fire.w - (w * l.fire.w) / 2, fy + dy * l.fire.h - 10 * s, w * l.fire.w, 10 * s), 1), key: "logs", density: 30 });
-    // A warm rug on the floor in front of the fire.
-    const rc: Pt = [l.R - g.w * 0.02, l.B + (H - l.B) * 0.5];
+    // A warm rug on the floor in front of the fire, lying along the hearth: a rounded shape in floor coordinates
+    // (u, how near; a, how far out from the wall) put into the room's perspective.
+    const floor = (u: number, a: number): Pt => {
+      const k = 1 + u * 2;
+      return [l.vp[0] + (l.R - a * g.w - l.vp[0]) * k, l.vp[1] + (l.B - l.vp[1]) * k];
+    };
     const rug: Pt[] = Array.from({ length: 24 }, (_, i) => {
-      const a = (i / 24) * Math.PI * 2, r = 1 + 0.08 * Math.sin(a * 5);
-      return [rc[0] + Math.cos(a) * g.w * 0.2 * r, rc[1] + Math.sin(a) * (H - l.B) * 0.32 * r];
+      const t = (i / 24) * Math.PI * 2, r = 1 + 0.06 * Math.sin(t * 5);
+      return floor(0.19 + Math.cos(t) * 0.12 * r, 0.16 + Math.sin(t) * 0.11 * r);
     });
     m.push({ kind: "fill", pts: wb(rug, 4), key: "rug", density: 60, spread: 0.2 });
     return m;

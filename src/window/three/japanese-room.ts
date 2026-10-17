@@ -75,7 +75,7 @@ export const japaneseRoom: Design = {
       }
 
     // A tea set on a tray.
-    const tx = 0.05;
+    const tx = 0.58;
     box(scene, 0.36, 0.015, 0.22, cedar, tx, top + 0.0075, z + 0.02);
     const clay = mat([74, 62, 54], { roughness: 0.4 });
     lathe(scene, [[0, 0], [0.05, 0], [0.065, 0.04], [0.06, 0.08], [0.03, 0.095], [0.012, 0.1], [0, 0.1]], clay, tx - 0.06, top + 0.015, z + 0.02);
@@ -83,7 +83,7 @@ export const japaneseRoom: Design = {
     for (const dx of [0.07, 0.13]) lathe(scene, [[0, 0], [0.022, 0], [0.03, 0.045], [0.026, 0.045], [0.018, 0.006], [0, 0.006]], mat([214, 206, 188], { roughness: 0.35 }), tx + dx, top + 0.015, z + 0.04);
 
     // A branch of blossom in a tall vase.
-    const vx = 0.62;
+    const vx = 0.84;
     lathe(scene, [[0, 0], [0.05, 0], [0.06, 0.08], [0.035, 0.22], [0.04, 0.26], [0, 0.26]], mat([62, 84, 92], { roughness: 0.3 }), vx, top, z);
     const branch = new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0.24, 0), new THREE.Vector3(0.05, 0.42, 0), new THREE.Vector3(0.2, 0.58, -0.02), new THREE.Vector3(0.34, 0.62, 0)]);
     solid(scene, new THREE.TubeGeometry(branch, 20, 0.006, 6), bark, vx, top, z);

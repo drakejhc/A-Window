@@ -180,7 +180,7 @@ function frontMarks(g: Geom, rng: Rng, d: Omit<PaintedData, "back" | "front">): 
   // A stack of books on the right.
   let sy2 = at(0, 0.42)[1];
   for (const [w, h, k] of [[0.16, 16, "b3"], [0.14, 13, "b4"], [0.15, 18, "b2"], [0.12, 12, "b5"]] as const) {
-    const cx = g.x + g.w * 0.9 + (rng() - 0.5) * 8 * s;
+    const cx = g.x + g.w * 0.87 + (rng() - 0.5) * 8 * s;
     m.push({ kind: "fill", pts: wb(rect(cx - (g.w * w) / 2, sy2 - h * s, g.w * w, h * s), 1.2), key: k, density: 40, edge: 0.45 });
     sy2 -= h * s;
   }

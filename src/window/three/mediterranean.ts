@@ -47,7 +47,7 @@ export const mediterranean: Design = {
     worldUV(box(scene, W, 0.07, D, oak, 0, top - 0.035, z), 1.2);
     for (const [x, zz] of [[-W / 2 + 0.08, z - D / 2 + 0.08], [W / 2 - 0.08, z - D / 2 + 0.08], [-W / 2 + 0.08, z + D / 2 - 0.08], [W / 2 - 0.08, z + D / 2 - 0.08]] as const)
       box(scene, 0.08, top - 0.07, 0.08, oak, x, (top - 0.07) / 2, zz);
-    box(scene, 0.42, 0.004, D + 0.12, mat([255, 255, 255], { map: toTexture(fabric([236, 230, 216], 35), [2, 2]), roughness: 1 }), -0.15, top + 0.002, z);
+    box(scene, 0.54, 0.004, D + 0.12, mat([255, 255, 255], { map: toTexture(fabric([236, 230, 216], 35), [2, 2]), roughness: 1 }), -0.05, top + 0.002, z);
 
     // Lemons in a bowl.
     const bowl = mat([226, 214, 190], { roughness: 0.45 });
@@ -59,7 +59,7 @@ export const mediterranean: Design = {
       l.rotation.y = r;
     }
     // A blue-and-white jug of white flowers.
-    const jx = 0.15;
+    const jx = 0.34;
     lathe(scene, [[0, 0], [0.06, 0], [0.085, 0.07], [0.08, 0.15], [0.05, 0.22], [0.055, 0.26], [0, 0.26]], mat([255, 255, 255], { map: toTexture(blueware()), roughness: 0.3 }), jx, top, z - 0.05);
     const stem = mat([86, 112, 64], { roughness: 0.8 });
     const petal = mat([248, 246, 238], { roughness: 0.7 });

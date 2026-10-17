@@ -62,7 +62,7 @@ export const nordicCabin: Design = {
     const skin = new THREE.Mesh(skinGeo, mat([255, 255, 255], { map: toTexture(fleece(), [4, 3]), roughness: 1 }));
     skin.scale.set(0.9, 0.12, 0.46);
     skin.rotation.y = 0.12;
-    skin.position.set(-0.25, benchTop + 0.03, bz + 0.03);
+    skin.position.set(-0.47, benchTop + 0.03, bz + 0.03);
     skin.castShadow = skin.receiveShadow = true;
     scene.add(skin);
     const cream = mat([255, 255, 255], { map: toTexture(knit([226, 214, 192]), [2, 2]), roughness: 1 });
@@ -70,12 +70,12 @@ export const nordicCabin: Design = {
     cushion(scene, 0.42, 0.42, 0.14, cream, -0.95, benchTop + 0.2, 0.12).rotation.set(-0.25, 0.25, 0.08);
     cushion(scene, 0.36, 0.36, 0.13, rust, -0.62, benchTop + 0.17, 0.1).rotation.set(-0.3, 0.1, -0.1);
     cushion(scene, 0.4, 0.4, 0.14, cream, 1.02, benchTop + 0.19, 0.12).rotation.set(-0.25, -0.3, -0.06);
-    mug(scene, mat([60, 72, 84], { roughness: 0.35 }), 0.62, benchTop, 0.32);
+    mug(scene, mat([60, 72, 84], { roughness: 0.35 }), 0.72, benchTop, 0.32);
 
     // Record player on the bench while music plays.
     const art = new AlbumArt();
     const deck = turntable(scene, art, mat([150, 104, 66], { roughness: 0.5 }), true);
-    deck.group.position.set(0.18, benchTop, 0.28);
+    deck.group.position.set(0.3, benchTop, 0.28);
 
     // Firewood stacked in a basket to the right, and a peg rail with a scarf.
     const bark = mat([92, 70, 52], { roughness: 0.95 });
