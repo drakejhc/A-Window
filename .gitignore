@@ -4,3 +4,5 @@ release
 artifact
 *.log
 .DS_Store
+shots
+shots-*
