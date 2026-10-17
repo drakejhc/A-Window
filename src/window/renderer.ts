@@ -2,6 +2,7 @@
  *  lightning and the glass. A window pack draws the room and the view. */
 import type { Environment } from "./environment";
 import { SkyLife } from "./sky-life";
+import { paintDraft } from "./packs/paint";
 import { hologram } from "./packs/painted-room";
 import type { AnyRoom, AnyView, FrameEnv, Geom, Painter } from "./types";
 import { clamp, makeRng, mixRGB, rgba, smooth, type RGB, type Rng } from "./util";
@@ -160,6 +161,7 @@ export class Renderer {
   private slideAcc = 0;
   private pending = 0;
   private builtFor = "";
+  private fullBuild = 0;
   private P: Painter;
 
   constructor(
@@ -267,9 +269,15 @@ export class Renderer {
     this.beads = [];
     this.sliders = [];
     this.trails = [];
-    this.viewData = this.view.build(g, makeRng(7));
-    // A scene that is both the view and the room shares one set of data.
-    this.roomData = (this.room as unknown) === (this.view as unknown) ? this.viewData : this.room.build(g, makeRng(11));
+    const build = () => {
+      this.viewData = this.view.build(g, makeRng(7));
+      // A scene that is both the view and the room shares one set of data.
+      this.roomData = (this.room as unknown) === (this.view as unknown) ? this.viewData : this.room.build(g, makeRng(11));
+    };
+    // A quick draft now, so there's a picture straight away, then the full painting once that's on screen.
+    window.clearTimeout(this.fullBuild);
+    paintDraft(build);
+    this.fullBuild = window.setTimeout(() => key === this.builtFor && build(), 80);
   }
 
   private spawnRain(initial: boolean, rng: Rng = Math.random): Drop {

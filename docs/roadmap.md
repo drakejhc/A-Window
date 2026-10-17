@@ -18,7 +18,9 @@
   current colour (sky warmed by the lamp), so the room glows through.
 - [x] Very wide screens show the window small in the middle. The window now keeps laptop proportions on big
   screens and widens with the screen's aspect (about half the width on ultra-wide).
-- [ ] Big screens sit dark for seconds while a painted room paints.
+- [x] Big screens sit dark for seconds while a painted room paints. Scenes now paint a quick draft first (about
+  5× sooner: 1.5 s → 0.35 s for the study, 4.3 s → 0.74 s for the bedroom, headless) and swap in the full painting
+  a moment later.
 
 **Then build, in order**
 1. [x] The same window light in the Cozy bedroom.
@@ -181,8 +183,15 @@ Baseline so far:
   - screenshot matrix (`scripts/screenshots.cjs`);
   - critique;
   - this roadmap;
-  - window light in the Midnight study.
+  - window light in both painted rooms, with a warm golden hour;
+  - the valley's mountains repainted;
+  - painted views for every room, drawn views retired;
+  - the bedroom's bed (quilting and a knitted throw);
+  - planner glass tinted by the scene;
+  - the window scales with big and ultra-wide screens;
+  - draft-first painting.
 - **In progress:** none.
-- **Next:** your choice from the list above.
+- **Next:** the build list: the glass at night (reflection, condensation, frost), then saved scenes and a sound
+  mixer, then caching painted rooms between launches.
 - **Learned:** in headless software rendering, a full painted-room paint takes 5–10 s at desktop sizes. The
   screenshot script waits 9 s per painted shot.

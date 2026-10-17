@@ -5,10 +5,22 @@ import { mixRGB, rgba, scaleRGB, type RGB, type Rng } from "../util";
 
 export type Pt = [number, number];
 
+let draft = false;
+/** Paints a quick draft: lower resolution and far fewer, broader strokes. A scene shows its draft at once and
+ *  repaints in full a moment later, instead of sitting dark for the seconds a full painting takes. */
+export function paintDraft<T>(fn: () => T): T {
+  draft = true;
+  try {
+    return fn();
+  } finally {
+    draft = false;
+  }
+}
+
 /** An offscreen canvas at up to `maxK`× resolution, drawn on in CSS pixels. Painted layers are large, so keep
  *  only the ones you need and `free` scratch layers as soon as they're used. */
 export function layer(W: number, H: number, maxK = 1.5) {
-  const k = Math.min(maxK, window.devicePixelRatio || 1);
+  const k = Math.min(draft ? 0.6 : maxK, window.devicePixelRatio || 1);
   const c = document.createElement("canvas");
   c.width = Math.max(1, Math.round(W * k));
   c.height = Math.max(1, Math.round(H * k));
@@ -76,14 +88,14 @@ export function brush(ctx: CanvasRenderingContext2D, pts: Pt[], col: RGB, rng: R
   ctx.clip();
   ctx.lineCap = "round";
   const [l0, l1] = o.len ?? [10, 34];
-  const n = Math.min(5000, ((x1 - x0) * (y1 - y0)) / (o.density ?? 240));
+  const n = Math.min(5000, ((x1 - x0) * (y1 - y0)) / (o.density ?? 240)) * (draft ? 0.15 : 1), wide = draft ? 2.2 : 1;
   for (let i = 0; i < n; i++) {
     const x = x0 + rng() * (x1 - x0), y = y0 + rng() * (y1 - y0);
     const a = (o.angle ?? 0) + (rng() - 0.5) * 0.6, L = (l0 + rng() * (l1 - l0)) * s;
     const k = 1 + (rng() - 0.5) * 2 * (o.spread ?? 0.14);
     const c = mixRGB(scaleRGB(col, k), rng() < 0.5 ? [255, 190, 150] : [110, 130, 220], 0.06);
     ctx.strokeStyle = rgba(c, 0.1 + rng() * 0.16);
-    ctx.lineWidth = (2 + rng() * 7) * s;
+    ctx.lineWidth = (2 + rng() * 7) * s * wide;
     ctx.beginPath();
     ctx.moveTo(x, y);
     ctx.quadraticCurveTo(x + (Math.cos(a) * L) / 2 + (rng() - 0.5) * 5 * s, y + (Math.sin(a) * L) / 2 + (rng() - 0.5) * 5 * s, x + Math.cos(a) * L, y + Math.sin(a) * L);
