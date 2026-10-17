@@ -17,7 +17,6 @@ import { useWindow } from "@/ui/use-window";
 import { desktop } from "@/desktop";
 import { useMusic, watchMusic } from "@/music";
 import { SettingsContext, useSettingsState } from "@/settings";
-import { NowPlaying } from "@/ui/NowPlaying";
 import { SettingsPanel } from "@/ui/SettingsPanel";
 import { Welcome } from "@/ui/Welcome";
 import { Workspace, type Mode, type View } from "@/ui/Workspace";
@@ -423,7 +422,6 @@ export function App() {
         ))}
 
       <Dock sheetOpen={sheetOpen && !focus} onToggleSheet={() => (focus ? undefined : setSheetOpen((v) => !v))} focusing={!!focus} onFocus={startFocus} onSettings={() => setSettingsOpen(true)} />
-      {!ws.visible && <NowPlaying />}
 
       {settingsOpen && (
         <SettingsPanel
