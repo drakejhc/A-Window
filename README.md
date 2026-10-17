@@ -44,8 +44,7 @@ npm test
   and *Cozy bedroom (painted)* are 2D paintings instead: brushwork, hand-drawn edges and grain,
   painted once in night, day and lamplight and blended live, looking out on a *Painted city* and a *Painted valley*; *Auto* picks one to suit the city (the cabin in the far north and
   south, the Japanese room in East Asia, the Mediterranean room where it's warm, the Listening room elsewhere). The
-  drawn rooms (Lofi study, Warm minimal, Attic, Log cabin) are lighter still,
-  and turn sound on. *Adjust* picks the view outside (rooftops, a fjord or a city skyline), the weather, a preview of another time of
+  painted rooms are lighter on the computer than the 3D ones. Turn sound on for rain, fire, birds and the city. *Adjust* picks the view outside (rooftops, a fjord or a city skyline), the weather, a preview of another time of
   day, and the volume. Any room goes with any view.
 - **Repeating events**: an event can repeat every day, every weekday or every week. Delete one day or the whole series.
 - **Settings** (the gear): °C/°F, 12/24-hour clock, the first day of the week, reminders, layout, backups, and in the
@@ -79,8 +78,11 @@ about the planner. The planner knows nothing about the window. `App.tsx` is the 
 
 The scene has two halves. A **view** (`ViewPack`) draws the landscape inside the glass; a **room** (`RoomPack`) draws
 the walls around the window and the desk or sill in front of it. The renderer handles the sky, weather and glass in
-between, so any room works with any view. See `src/window/types.ts` for the interfaces, `packs/lofi-study.ts` and
-`packs/warm-minimal.ts` for rooms, and `packs/props.ts` for the shared cat, mug, plant, books and fairy lights. Add a
+between, so any room works with any view. See `src/window/types.ts` for the interfaces, `packs/painted-room.ts` (the painted-room
+system) with `packs/painted-bedroom.ts` and `packs/painted-study.ts` for rooms, `packs/painted-city.ts` and
+`packs/painted-valley.ts` for views, and `packs/props.ts` for shared props. `sky-life.ts` adds meteors, planes, birds,
+rainbows, fireflies and fireworks to every view. `scripts/screenshots.cjs` captures every room across times of day and
+weather for before/after comparisons. Add a
 pack to `VIEWS` or `ROOMS` in `engine.ts` and it appears in the pickers.
 
 **3D rooms** (`src/window/three/`) are rendered with three.js and loaded only when chosen. Three layers keep them cheap:
