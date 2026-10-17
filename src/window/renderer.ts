@@ -45,8 +45,10 @@ function computeGeom(W: number, H: number, opts: RendererOptions): Geom {
     w = Math.min(W * 0.78, 520);
     h = Math.min(H * 0.56, w * 1.45);
   } else {
-    h = Math.min(H * 0.64, 760);
-    w = Math.min(W * 0.62, h * 1.38);
+    // The same proportions on big screens as on a laptop, and a wider window on wider screens, so an ultra-wide
+    // monitor isn't mostly wall.
+    h = Math.min(H * 0.64, 760 * Math.max(1, H / 1100));
+    w = Math.min(W * 0.62, h * (1.38 + Math.max(0, W / H - 1.78) * 0.9));
   }
   w = Math.round(w);
   h = Math.round(h);

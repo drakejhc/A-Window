@@ -16,7 +16,8 @@
   knitted terracotta throw draped over its side, which catches the window light and the fire.
 - [x] The planner darkens the whole scene evenly. Its glass is now lighter frosted glass tinted by the scene's
   current colour (sky warmed by the lamp), so the room glows through.
-- [ ] Very wide screens show the window small in the middle.
+- [x] Very wide screens show the window small in the middle. The window now keeps laptop proportions on big
+  screens and widens with the screen's aspect (about half the width on ultra-wide).
 - [ ] Big screens sit dark for seconds while a painted room paints.
 
 **Then build, in order**
