@@ -4,7 +4,7 @@ import type { Environment } from "./environment";
 import { buildInFull } from "./full-paint";
 import { Glass } from "./glass";
 import { SkyLife } from "./sky-life";
-import { paintDraft } from "./packs/paint";
+import { paintDraft, tonesKey } from "./packs/paint";
 import { hologram } from "./packs/painted-room";
 import type { AnyRoom, AnyView, FrameEnv, Geom, Painter } from "./types";
 import { clamp, makeRng, mixRGB, rgba, smooth, type RGB, type Rng } from "./util";
@@ -230,7 +230,7 @@ export class Renderer {
     const W = rect.width,
       H = rect.height;
     const dpr = Math.min(this.opts.maxDpr ?? 2, window.devicePixelRatio || 1);
-    const key = `${W}x${H}@${dpr}:${this.opts.align ?? 0.5}`;
+    const key = `${W}x${H}@${dpr}:${this.opts.align ?? 0.5}:${tonesKey()}`;
     if (!force && key === this.builtFor) return;
     this.builtFor = key;
     this.dpr = dpr;
@@ -327,6 +327,8 @@ export class Renderer {
     // Not built yet (the window started hidden): try now, and wait if it still has no size.
     if (!this.builtFor) this.resize();
     if (!this.builtFor) return;
+    // New wall or blanket colours: paint the room again.
+    if (!this.builtFor.endsWith(`:${tonesKey()}`)) this.resize(true);
     this.pending += dt;
     const min = this.opts.maxFps ? 1 / this.opts.maxFps : 0;
     if (this.pending < min) return;

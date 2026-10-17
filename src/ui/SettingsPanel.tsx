@@ -5,6 +5,7 @@ import { desktop, type DesktopSettings } from "@/desktop";
 import { useMusic } from "@/music";
 import { useSettings } from "@/settings";
 
+import { BLANKETS, COATS, LAMPS, WALLS, type BlanketTone, type Coat, type LampTone, type WallTone } from "@/personal";
 import type { SavedScene, ScenesState } from "@/scenes";
 
 import { CityPicker } from "./CityPicker";
@@ -53,7 +54,7 @@ function Toggle({ label, hint, checked, onChange, disabled }: { label: string; h
 
 export function SettingsPanel({ layout, onLayout, focusMinutes, onFocusMinutes, onStartFresh, scenes, onScenes, onShowScene, onClose }: Props) {
   const { settings, update } = useSettings();
-  const { snap } = useWindow();
+  const { snap, engine } = useWindow();
   const music = useMusic();
   const [desk, setDesk] = useState<DesktopSettings | null>(null);
   const [message, setMessage] = useState("");
@@ -118,6 +119,15 @@ export function SettingsPanel({ layout, onLayout, focusMinutes, onFocusMinutes, 
             options={[["auto", "On battery"], ["on", "Always"], ["off", "Off"]]}
             onChange={(saver) => update({ saver })}
           />
+        </section>
+
+        <section>
+          <h3>Make it yours</h3>
+          <Seg label="The cat" value={snap.personal.cat} options={Object.entries(COATS).map(([k, v]) => [k as Coat, v.name])} onChange={(cat) => engine.setPersonal({ cat })} />
+          <Seg label="Lamplight" value={snap.personal.lamp} options={Object.entries(LAMPS).map(([k, v]) => [k as LampTone, v.name])} onChange={(lamp) => engine.setPersonal({ lamp })} />
+          <Seg label="Walls" value={snap.personal.walls} options={Object.entries(WALLS).map(([k, v]) => [k as WallTone, v.name])} onChange={(walls) => engine.setPersonal({ walls })} />
+          <Seg label="Blanket" value={snap.personal.blanket} options={Object.entries(BLANKETS).map(([k, v]) => [k as BlanketTone, v.name])} onChange={(blanket) => engine.setPersonal({ blanket })} />
+          <p className="hint">The cat lives in the Midnight study and the blanket in the Cozy bedroom. New walls or a new blanket repaint the room.</p>
         </section>
 
         <ScenesSection scenes={scenes} onScenes={onScenes} onShow={onShowScene} />

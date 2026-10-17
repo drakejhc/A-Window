@@ -1,7 +1,7 @@
 /** Builds a painted pack in full without holding up the page. In order of preference: replay its layers from the
  *  cache (instant), paint them in a worker and replay them here (the page stays smooth), or paint here as before.
  *  Fresh paintings are saved for next time. */
-import { recordPaint, replayPaint, type Painted } from "./packs/paint";
+import { paintTones, recordPaint, replayPaint, tonesKey, type Painted } from "./packs/paint";
 import { loadPainting, savePainting } from "./paint-cache";
 import type { PaintReply, PaintRequest } from "./paint-worker";
 import type { Geom } from "./types";
@@ -45,11 +45,11 @@ function paintInWorker(pack: string, g: Geom, seed: number): Promise<Layers | nu
   return new Promise((resolve) => {
     const job = ++jobs;
     waiting.set(job, (r) => resolve("error" in r ? null : { images: r.images, sizes: r.sizes }));
-    w.postMessage({ job, pack, g, seed, dpr: window.devicePixelRatio || 1 } satisfies PaintRequest);
+    w.postMessage({ job, pack, g, seed, dpr: window.devicePixelRatio || 1, tones: paintTones() } satisfies PaintRequest);
   });
 }
 
-export const cacheKey = (pack: string, g: Geom) => (BUILD ? `${BUILD}|${pack}|${window.devicePixelRatio || 1}|${JSON.stringify(g)}` : null);
+export const cacheKey = (pack: string, g: Geom) => (BUILD ? `${BUILD}|${pack}|${window.devicePixelRatio || 1}|${tonesKey()}|${JSON.stringify(g)}` : null);
 
 export async function buildInFull<D>(pack: Pack, g: Geom, seed: number): Promise<D> {
   const key = cacheKey(pack.id, g);

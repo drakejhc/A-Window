@@ -1,9 +1,32 @@
 /** Painterly drawing for the hand-painted scenes: shapes with wobbly, hand-drawn edges, filled with layers of
  *  short translucent brush strokes, and a grain to lay over the whole picture. Painting is slow, so scenes paint
  *  once into cached layers (see `layer`) and only blend those layers each frame. */
+import { retint } from "../../personal";
 import { mixRGB, rgba, scaleRGB, type RGB, type Rng } from "../util";
 
 export type Pt = [number, number];
+
+/** The wall and blanket colours chosen in "Make it yours", painted into the rooms. */
+export type PaintTones = { walls: RGB | null; blanket: RGB | null };
+let tones: PaintTones = { walls: null, blanket: null };
+export function setPaintTones(t: PaintTones) {
+  tones = t;
+}
+export const paintTones = () => tones;
+/** A short key for the current tones, so a change repaints the room (and caches it separately). */
+export const tonesKey = () => `${tones.walls?.join(",") ?? "-"}/${tones.blanket?.join(",") ?? "-"}`;
+
+/** A palette with the chosen colours applied: walls keep their light and shade and change colour; the blanket and
+ *  throw change colour more fully. */
+export function tonePalette<P extends Record<string, RGB>>(pal: P): P {
+  if (!tones.walls && !tones.blanket) return pal;
+  const out: Record<string, RGB> = { ...pal };
+  for (const k of Object.keys(out)) {
+    if (tones.walls && /wall/i.test(k)) out[k] = retint(out[k]!, tones.walls);
+    if (tones.blanket && /throw|blanket/i.test(k)) out[k] = retint(out[k]!, tones.blanket, 0.85);
+  }
+  return out as P;
+}
 
 let draft = false;
 /** Paints a quick draft: lower resolution and far fewer, broader strokes. A scene shows its draft at once and

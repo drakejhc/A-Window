@@ -2,9 +2,10 @@
  *  on a few books and an open notebook; a small black cat sits on the desk watching the city; the rest of the room
  *  falls away into cool, soft shadow. The room is painted once in night, day and lamplight colours, and each
  *  frame blends those paintings for the real time of day, then adds the few things that move. */
+import { COATS } from "../../personal";
 import type { FrameEnv, Geom, RoomPack } from "../types";
 import { clamp, makeRng, rgba, type RGB, type Rng } from "../util";
-import { brush, fadeOut, free, grain, layer, rect, trace, wobble, type Pt } from "./paint";
+import { brush, fadeOut, free, grain, layer, rect, tonePalette, trace, wobble, type Pt } from "./paint";
 import { dayLevel, glow } from "./props";
 import { lightCanvases, windowLight, type Glazing, type LightCanvases, type LightPlane } from "./window-light";
 
@@ -208,6 +209,7 @@ function frontMarks(g: Geom, rng: Rng, d: Omit<PaintedData, "back" | "front" | "
 }
 
 function paint(g: Geom, marks: Mark[], pal: Palette, seed: number, soften: number) {
+  pal = tonePalette(pal);
   // The softened background doesn't need more than one pixel per CSS pixel.
   const L = layer(g.W, g.H, soften ? 1 : 1.5), x = L.x, rng = makeRng(seed);
   for (const mk of marks) {
@@ -371,6 +373,8 @@ function blend(ctx: CanvasRenderingContext2D, env: FrameEnv, g: Geom, l: { night
 /** A small black cat sitting on the desk with its back to us, lit warm on the lamp side and cool from the window.
  *  Its tail sways and an ear twitches now and then. */
 function drawCat(ctx: CanvasRenderingContext2D, env: FrameEnv, c: PaintedData["cat"], on: number) {
+  const coat = COATS[env.coat];
+  if (env.coat === "none") return;
   const { x, y, u } = c, t = env.t;
   const twitch = Math.max(0, Math.sin(t * 0.7)) ** 40 * 4 * u;
   const body = () => {
@@ -392,7 +396,10 @@ function drawCat(ctx: CanvasRenderingContext2D, env: FrameEnv, c: PaintedData["c
   ctx.beginPath();
   ctx.ellipse(x + 10 * u, y + 2 * u, 46 * u, 7 * u, 0, 0, Math.PI * 2);
   ctx.fill();
-  const fur: RGB = [16, 15, 26];
+  // The coat, lit by the room: a black cat stays a silhouette, lighter coats pick up the day and the lamp.
+  const lightness = 0.28 + 0.6 * dayLevel(env);
+  const shade = (col: RGB): RGB => [col[0] * lightness + 30 * on, col[1] * lightness + 16 * on, col[2] * lightness + 4 * on];
+  const fur: RGB = env.coat === "black" ? [16, 15, 26] : shade(coat.fur);
   // Tail, curled along the desk with its tip swaying.
   const sway = Math.sin(t * 0.9) * 7 * u * (0.5 + 0.5 * Math.sin(t * 0.23));
   ctx.strokeStyle = rgba(fur);
@@ -406,6 +413,24 @@ function drawCat(ctx: CanvasRenderingContext2D, env: FrameEnv, c: PaintedData["c
   body();
   ctx.fillStyle = rgba(fur);
   ctx.fill();
+  if (coat.patches) {
+    // Calico: patches of ginger and black over white.
+    ctx.save();
+    body();
+    ctx.clip();
+    const [a, b] = coat.patches.map(shade) as [RGB, RGB];
+    ctx.fillStyle = rgba(a);
+    ctx.beginPath();
+    ctx.ellipse(x - 16 * u, y - 96 * u, 22 * u, 18 * u, 0.4, 0, Math.PI * 2);
+    ctx.ellipse(x + 18 * u, y - 30 * u, 20 * u, 26 * u, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = rgba(b);
+    ctx.beginPath();
+    ctx.ellipse(x + 14 * u, y - 108 * u, 12 * u, 10 * u, 0, 0, Math.PI * 2);
+    ctx.ellipse(x - 22 * u, y - 40 * u, 14 * u, 18 * u, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
   // Rim light: warm from the lamp on its left, a cool sheen from the window on its head and back.
   ctx.save();
   body();

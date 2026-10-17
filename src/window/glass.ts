@@ -161,14 +161,14 @@ export class Glass {
   /** A faint reflection of the lit room in the lower glass after dark, drawn before the room so the room's own
    *  shapes stay in front of it. */
   drawReflection(ctx: CanvasRenderingContext2D, env: FrameEnv, g: Geom) {
-    const a = 0.32 * (1 - env.dayness) * clamp(env.lamp + 0.3);
+    const a = 0.2 * (1 - env.dayness) * clamp(env.lamp + 0.3);
     if (!this.reflection || this.reflectedAt < 0 || a < 0.02) return;
     ctx.save();
     ctx.globalCompositeOperation = "screen";
     ctx.globalAlpha = a;
     ctx.translate(0, g.y + g.h);
     ctx.scale(1, -1);
-    ctx.drawImage(this.reflection, g.x, 0, g.w, g.h * 0.5);
+    ctx.drawImage(this.reflection, g.x, 0, g.w, g.h * 0.32);
     ctx.restore();
   }
 
@@ -216,6 +216,15 @@ export class Glass {
     this.reflectedAt = env.t;
     const x = this.reflection.getContext("2d")!;
     x.clearRect(0, 0, this.reflection.width, this.reflection.height);
-    x.drawImage(source, g.x * dpr, (g.y + g.h) * dpr, g.w * dpr, g.h * 0.5 * dpr, 0, 0, this.reflection.width, this.reflection.height);
+    x.globalCompositeOperation = "source-over";
+    x.drawImage(source, g.x * dpr, (g.y + g.h) * dpr, g.w * dpr, g.h * 0.32 * dpr, 0, 0, this.reflection.width, this.reflection.height);
+    // Strongest right by the sill, fading out further up the glass.
+    const fade = x.createLinearGradient(0, 0, 0, this.reflection.height);
+    fade.addColorStop(0, "rgba(0,0,0,1)");
+    fade.addColorStop(1, "rgba(0,0,0,0)");
+    x.globalCompositeOperation = "destination-in";
+    x.fillStyle = fade;
+    x.fillRect(0, 0, this.reflection.width, this.reflection.height);
+    x.globalCompositeOperation = "source-over";
   }
 }

@@ -36,7 +36,9 @@
 
 **And the big options (all wanted; ask before starting each, as they're L-sized)**
 - [ ] New painted rooms or views: a rainy café, a train compartment, a lighthouse, a sea cliff, a Tokyo alley.
-- [ ] "Make it yours": swapping props, colours and the cat.
+- [x] "Make it yours": swapping props, colours and the cat. Settings → Make it yours: the cat's coat (or no
+  cat), lamplight colour, wall colour and blanket colour (`src/personal.ts`, versioned, with tests). Walls and
+  blanket are painted in, so changing them repaints (and caches) the room.
 - [x] The 3D rooms: retire them, or restyle them to match the painted ones (retire the Japanese room first). The
   Japanese room is retired (saved choices move to the Midnight study, which Auto now picks in East Asia); the
   Listening room, cabin and Mediterranean room stay, each looking out on a painted view.

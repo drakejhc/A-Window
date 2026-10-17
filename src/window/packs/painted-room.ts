@@ -4,7 +4,7 @@
  *  then draws the live details, a vignette and grain. (painted-study.ts predates this and keeps its own copy.) */
 import type { AmbienceWeights, FrameEnv, Geom, RoomPack } from "../types";
 import { clamp, makeRng, mixRGB, rgba, scaleRGB, type RGB, type Rng } from "../util";
-import { brush, free, grain, layer, trace, type Pt } from "./paint";
+import { brush, free, grain, layer, tonePalette, trace, type Pt } from "./paint";
 import { dayLevel, glow } from "./props";
 import { lightCanvases, windowLight, type Glazing, type LightCanvases, type LightPlane, type Occluder } from "./window-light";
 
@@ -53,6 +53,7 @@ export type PaintedRoomData<L> = {
 export const defaultLevel = (env: FrameEnv) => clamp(Math.max(env.lamp * 1.1, 0.6 * (1 - dayLevel(env))) + 0.15);
 
 function paint(g: Geom, marks: Mark[], pal: Palette, seed: number, soften: number) {
+  pal = tonePalette(pal);
   const L = layer(g.W, g.H, soften ? 1 : 1.5), x = L.x, rng = makeRng(seed);
   for (const mk of marks) {
     const col = pal[mk.key] ?? [255, 0, 255];

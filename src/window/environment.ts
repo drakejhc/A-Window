@@ -5,6 +5,7 @@ import type { City } from "./cities";
 import { clamp, ease, lerp, mapRGB, mixRGB, smooth, type RGB } from "./util";
 import type { Weather } from "./weather";
 import type { MusicState } from "../music";
+import type { Coat } from "../personal";
 
 const LAMP: RGB = [255, 176, 96];
 
@@ -108,6 +109,10 @@ export class Environment implements Eased {
   music = { on: 0, playing: false, spin: 0, arm: 0, art: null as CanvasImageSource | null, title: "", artist: "" };
   /** The lamp's colour, tinted by the album art while music plays. */
   lampColor: RGB = LAMP;
+  /** The lamp's own colour, before music tints it ("Make it yours"). */
+  lampBase: RGB = LAMP;
+  /** The cat's coat, or no cat. */
+  coat: Coat = "black";
   private astroAt = 0;
   private fresh = true;
   private flashQueue: { at: number; v: number }[] = [];
@@ -188,7 +193,7 @@ export class Environment implements Eased {
     mu.spin = (mu.spin + dt * Math.PI * 2 * (33.33 / 60) * mu.arm) % (Math.PI * 2);
     mu.art = m.art;
     if (m.np) (mu.title = m.np.title), (mu.artist = m.np.artist);
-    const tint = m.tint ? mixRGB(LAMP, mixRGB(m.tint, [255, 255, 255], 0.25), 0.45 * mu.arm) : LAMP;
+    const tint = m.tint ? mixRGB(this.lampBase, mixRGB(m.tint, [255, 255, 255], 0.25), 0.45 * mu.arm) : this.lampBase;
     this.lampColor = mixRGB(this.lampColor, tint, 1 - Math.exp(-dt / 1.5));
   }
 

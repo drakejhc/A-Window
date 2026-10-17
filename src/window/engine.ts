@@ -13,7 +13,9 @@ import { paintedValley } from "./packs/painted-valley";
 import type { AmbienceWeights, AnyRoom, AnyView } from "./types";
 import { describe, fetchCurrent, type Weather } from "./weather";
 import { isWallpaper } from "../desktop";
+import { BLANKETS, LAMPS, loadPersonal, PERSONAL_KEY, readPersonal, WALLS, type Personal } from "../personal";
 import { cleanMix, type Sound, type SoundMix } from "../scenes";
+import { setPaintTones } from "./packs/paint";
 import { getMusic } from "../music";
 
 /** What's outside the window, and the room you're in. Any view goes with any room. */
@@ -55,6 +57,8 @@ export type WindowSnapshot = {
   shift: number;
   /** How loud the scene itself would make each sound, before your own mix. */
   ambience: AmbienceWeights;
+  /** "Make it yours": the cat, lamp, walls and blanket. */
+  personal: Personal;
 };
 
 type Tickable = { tick: (env: Environment, dt: number) => void };
@@ -160,9 +164,12 @@ export class WindowEngine {
   private away = false;
   private cap = 0;
 
+  private personal: Personal = loadPersonal();
+
   constructor(private silent = false) {
     this.prefs = loadPrefs();
     this.env = new Environment(this.city);
+    this.applyPersonal();
     this.env.update(this.now(), 0);
     this.env.setWeather(this.effectiveWeather(), true);
     this.audio.setEnv(this.env);
@@ -173,6 +180,11 @@ export class WindowEngine {
     // Another window (the wallpaper, or a second tab) changed the window's settings.
     window.addEventListener("storage", (e) => {
       if (e.key === PREFS_KEY) this.adopt(loadPrefs());
+      if (e.key === PERSONAL_KEY) {
+        this.personal = loadPersonal();
+        this.applyPersonal();
+        this.publish();
+      }
     });
     // Back online: fetch the weather straight away.
     window.addEventListener("online", () => {
@@ -264,6 +276,26 @@ export class WindowEngine {
     if (on && this.tickables.size && !this.silent && !this.away) this.audio.start();
     else this.audio.stop();
     this.save();
+  }
+
+  /** Changes "Make it yours": the cat and lamp change at once; new walls or blanket repaint the room. */
+  setPersonal(patch: Partial<Omit<Personal, "version">>) {
+    this.personal = readPersonal({ ...this.personal, ...patch });
+    try {
+      window.localStorage.setItem(PERSONAL_KEY, JSON.stringify(this.personal));
+    } catch {
+      /* storage unavailable: lasts for this session */
+    }
+    this.applyPersonal();
+    this.publish();
+  }
+
+  private applyPersonal() {
+    const p = this.personal;
+    this.env.lampBase = LAMPS[p.lamp].color;
+    this.env.lampColor = this.env.lampBase;
+    this.env.coat = p.cat;
+    setPaintTones({ walls: WALLS[p.walls].tint, blanket: BLANKETS[p.blanket].tint });
   }
 
   /** Sets your own level for one sound, or (null) hands it back to the scene. */
@@ -401,6 +433,7 @@ export class WindowEngine {
       weather: this.effectiveWeather(),
       shift: this.shift,
       ambience,
+      personal: this.personal,
     };
     for (const fn of this.listeners) fn();
   }
