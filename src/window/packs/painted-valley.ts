@@ -10,7 +10,7 @@ export type PaintedValleyData = { bands: Band[]; box: { x: number; y: number; w:
 
 type Shape = { pts: Pt[]; kind: "ground" | "cap" | "tree"; angle: number };
 type Colors = { ground: RGB; tree: RGB; cap: RGB };
-type BandSpec = { depth: number; blur: number; night: Colors; day: Colors; snowNight: Colors; snowDay: Colors; shapes: (g: Geom, rng: Rng) => Shape[]; lights?: (g: Geom, rng: Rng) => Pt[] };
+type BandSpec = { depth: number; blur: number; /** Caps that stay all year (high snow, roofs), not only when snowy. */ keepCaps?: boolean; night: Colors; day: Colors; snowNight: Colors; snowDay: Colors; shapes: (g: Geom, rng: Rng) => Shape[]; lights?: (g: Geom, rng: Rng) => Pt[] };
 
 /** A pine: tiers of drooping branches, wider toward the bottom, a little uneven. */
 const pine = (x: number, base: number, h: number, w: number, rng?: Rng): Pt[] => {
@@ -36,30 +36,122 @@ const ridge = (g: Geom, rng: Rng, base: number, amp: number, rough: number, marg
   return pts;
 };
 
+/** A natural ridgeline through the given points, by midpoint displacement: each pass halves every segment and
+ *  nudges the new point up or down, less with each pass. Points only move vertically, so the line never doubles
+ *  back on itself. */
+const ridgeline = (skeleton: Pt[], rng: Rng, rough: number, passes: number): Pt[] => {
+  let pts = skeleton;
+  let amp = rough;
+  for (let k = 0; k < passes; k++) {
+    const next: Pt[] = [pts[0]!];
+    for (let i = 1; i < pts.length; i++) {
+      const [ax, ay] = pts[i - 1]!, [bx, by] = pts[i]!;
+      next.push([(ax + bx) / 2, (ay + by) / 2 + (rng() - 0.5) * amp * Math.abs(bx - ax)], [bx, by]);
+    }
+    pts = next;
+    amp *= 0.7;
+  }
+  return pts;
+};
+
+/** Snow above a snowline: each stretch of the ridge that rises above it, closed underneath by a ragged edge that
+ *  reaches further down in places, like snow lying longer in the gullies. */
+const snowCaps = (line: Pt[], snowY: number, foot: number, g: Geom, rng: Rng, reach: number): Pt[][] => {
+  const caps: Pt[][] = [];
+  let run: Pt[] = [];
+  const close = () => {
+    if (run.length > 2) {
+      const x0 = run[0]![0], x1 = run[run.length - 1]![0], under: Pt[] = [];
+      const n = Math.max(3, Math.round((x1 - x0) / (6 * g.s)));
+      // Two out-of-step waves and some noise, so the gullies come at irregular intervals and depths.
+      const a = rng() * 9, b = rng() * 9, f1 = (0.02 + rng() * 0.015) / g.s, f2 = (0.055 + rng() * 0.03) / g.s;
+      for (let i = n; i >= 0; i--) {
+        const x = x0 + ((x1 - x0) * i) / n;
+        const gully = 0.6 * Math.pow(Math.abs(Math.sin(x * f1 + a)), 4) + 0.4 * Math.pow(Math.abs(Math.sin(x * f2 + b)), 6);
+        under.push([x, Math.min(foot - g.h * 0.04, snowY + g.h * (0.005 + gully * reach + rng() * 0.015))]);
+      }
+      caps.push([...run, ...under]);
+    }
+    run = [];
+  };
+  for (const p of line) {
+    if (p[1] < snowY) run.push(p);
+    else close();
+  }
+  close();
+  return caps;
+};
+
 const BANDS: BandSpec[] = [
   {
+    // A far range, pale with distance and softer, so the main peaks stand in front of something.
+    depth: 0.97,
+    blur: 2.6,
+    keepCaps: true,
+    night: { ground: [64, 72, 112], tree: [60, 68, 106], cap: [92, 102, 144] },
+    day: { ground: [158, 172, 202], tree: [148, 162, 194], cap: [222, 230, 244] },
+    snowNight: { ground: [100, 110, 150], tree: [96, 106, 146], cap: [118, 128, 170] },
+    snowDay: { ground: [212, 220, 236], tree: [204, 212, 230], cap: [236, 240, 248] },
+    shapes(g, rng) {
+      const foot = g.y + g.h * 0.56;
+      const skeleton: Pt[] = [];
+      for (let x = g.x - 60, i = 0; x < g.x + g.w + 120; x += g.w * (0.14 + rng() * 0.1), i++)
+        skeleton.push([x, g.y + g.h * (i % 2 ? 0.44 + rng() * 0.05 : 0.35 + rng() * 0.06)]);
+      const line = ridgeline(skeleton, rng, 0.16, 5);
+      return [
+        { kind: "ground", angle: Math.PI / 2, pts: [[g.x - 60, g.y + g.h + 30], ...line, [skeleton[skeleton.length - 1]![0], g.y + g.h + 30]] },
+        ...snowCaps(line, g.y + g.h * 0.39, foot, g, rng, 0.04).map((pts): Shape => ({ kind: "cap", angle: Math.PI / 2, pts })),
+      ];
+    },
+  },
+  {
+    // The main range: one big mountain off centre with smaller peaks around it, rugged ridgelines, a shadowed
+    // face on each high peak, and snow down to a shared snowline, reaching lower in the gullies.
     depth: 0.92,
     blur: 1.8,
-    night: { ground: [56, 64, 104], tree: [48, 56, 94], cap: [104, 114, 156] },
-    day: { ground: [128, 144, 178], tree: [112, 128, 160], cap: [226, 232, 244] },
-    snowNight: { ground: [96, 106, 148], tree: [80, 90, 130], cap: [120, 130, 172] },
-    snowDay: { ground: [206, 214, 232], tree: [170, 180, 204], cap: [240, 244, 250] },
+    keepCaps: true,
+    night: { ground: [56, 64, 104], tree: [42, 48, 84], cap: [104, 114, 156] },
+    day: { ground: [128, 144, 178], tree: [100, 112, 148], cap: [226, 232, 244] },
+    snowNight: { ground: [96, 106, 148], tree: [74, 82, 120], cap: [120, 130, 172] },
+    snowDay: { ground: [206, 214, 232], tree: [168, 178, 204], cap: [240, 244, 250] },
     shapes(g, rng) {
-      // Peaks: a jagged range with snow on the tops.
-      // Peaks and saddles left to right, so the outline never doubles back on itself.
-      const foot = g.y + g.h * 0.56, caps: Shape[] = [];
-      const pts: Pt[] = [[g.x - 60, g.y + g.h + 30], [g.x - 60, foot]];
-      let x = g.x - 60;
-      while (x < g.x + g.w + 60) {
-        const w = g.w * (0.12 + rng() * 0.14), top = g.y + g.h * (0.3 + rng() * 0.14), px = x + w * (0.4 + rng() * 0.2);
-        const sad = foot - g.h * (0.02 + rng() * 0.06);
-        pts.push([px - w * 0.12, top + (foot - top) * 0.28], [px, top], [px + w * 0.1, top + (foot - top) * 0.22], [x + w, sad]);
-        const ch = (foot - top) * 0.32;
-        caps.push({ kind: "cap", angle: Math.PI / 2, pts: [[px, top], [px + w * 0.1, top + ch * 0.7], [px + w * 0.05, top + ch * 0.85], [px - w * 0.02, top + ch], [px - w * 0.08, top + ch * 0.75], [px - w * 0.12, top + ch * 0.85]] });
-        x += w;
+      const foot = g.y + g.h * 0.58;
+      // Peaks as (x, top, width), the tallest a little off centre, the rest stepping down toward the edges.
+      const main = g.x + g.w * (rng() < 0.5 ? 0.3 + rng() * 0.08 : 0.62 + rng() * 0.08);
+      const peaks: { x: number; top: number }[] = [{ x: main, top: g.y + g.h * (0.17 + rng() * 0.04) }];
+      for (const dir of [-1, 1]) {
+        let x = main, k = 0;
+        while ((dir < 0 ? x > g.x - 40 : x < g.x + g.w + 40) && k < 6) {
+          x += dir * g.w * (0.13 + rng() * 0.12);
+          k++;
+          peaks.push({ x, top: g.y + g.h * Math.min(0.46, 0.25 + k * 0.035 + rng() * 0.08) });
+        }
       }
-      pts.push([g.x + g.w + 60, g.y + g.h + 30]);
-      return [{ kind: "ground", angle: Math.PI / 2, pts: wobble(pts, rng, 3, 14) }, ...caps.map((c) => ({ ...c, pts: wobble(c.pts, rng, 2, 8) }))];
+      peaks.sort((a, b) => a.x - b.x);
+      const skeleton: Pt[] = [];
+      peaks.forEach((p, i) => {
+        if (i) {
+          // The saddle between two peaks sits lower the further apart they are.
+          const prev = peaks[i - 1]!, gap = p.x - prev.x;
+          skeleton.push([prev.x + gap * (0.4 + rng() * 0.2), Math.max(prev.top, p.top) + gap * (0.25 + rng() * 0.2)]);
+        }
+        skeleton.push([p.x, p.top]);
+      });
+      skeleton.unshift([g.x - 80, skeleton[0]![1] + g.h * 0.08]);
+      skeleton.push([g.x + g.w + 80, skeleton[skeleton.length - 1]![1] + g.h * 0.08]);
+      const line = ridgeline(skeleton, rng, 0.3, 6);
+      const shapes: Shape[] = [{ kind: "ground", angle: Math.PI / 2, pts: [[g.x - 80, g.y + g.h + 30], ...line, [g.x + g.w + 80, g.y + g.h + 30]] }];
+      // The shadowed face of each high peak: from the summit down its right-hand ridge, then back up a spur.
+      for (const p of peaks.filter((q) => q.top < g.y + g.h * 0.36)) {
+        const right = line.filter(([x]) => x >= p.x && x <= p.x + g.w * 0.16);
+        if (right.length < 3) continue;
+        // Down the right-hand ridge, then back up to the summit along a spur that leaves the lower slopes lit.
+        const end = right[right.length - 1]!, low: Pt = [p.x + (end[0] - p.x) * 0.35, end[1] + (foot - end[1]) * 0.55];
+        const spur = ridgeline([low, [p.x, p.top]], rng, 0.12, 4);
+        shapes.push({ kind: "tree", angle: Math.PI / 2 + 0.35, pts: [...right, ...spur] });
+      }
+      for (const pts of snowCaps(line, g.y + g.h * 0.33, foot, g, rng, 0.07)) shapes.push({ kind: "cap", angle: Math.PI / 2, pts });
+      return shapes;
     },
   },
   {
@@ -85,6 +177,7 @@ const BANDS: BandSpec[] = [
   {
     depth: 0.35,
     blur: 0,
+    keepCaps: true,
     night: { ground: [30, 36, 62], tree: [18, 24, 42], cap: [52, 44, 56] },
     day: { ground: [96, 122, 102], tree: [44, 66, 66], cap: [118, 92, 84] },
     snowNight: { ground: [100, 108, 146], tree: [22, 28, 48], cap: [64, 56, 70] },
@@ -142,8 +235,8 @@ export const paintedValley: ViewPack<PaintedValleyData> & { painted: true } = {
       const paintBand = (cols: Colors, seed: number, snowy: boolean) => {
         const L = region(), r = makeRng(seed);
         for (const sh of shapes) {
-          // Snow caps belong to the snowy versions, except on the high peaks, which keep theirs all year.
-          if (sh.kind === "cap" && !snowy && i !== 0 && i !== 2) continue;
+          // Snow caps belong to the snowy versions, except on the high peaks (and the roofs), which keep theirs.
+          if (sh.kind === "cap" && !snowy && !b.keepCaps) continue;
           brush(L.x, sh.pts, cols[sh.kind], r, { s: g.s, angle: sh.angle, density: 70, spread: 0.12, len: [6, 22] });
         }
         if (!b.blur) return L.c;
