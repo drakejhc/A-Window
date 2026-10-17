@@ -31,13 +31,15 @@
 4. [x] Saved scenes with a schedule, plus a separate volume for each sound (`src/scenes.ts`). Adjust → Sounds sets
    each sound's level (with new café murmur and vinyl crackle); Settings → Scenes saves the window, schedules scenes
    by time of day, and can switch to a scene during Focus.
-5. [ ] Saving painted rooms between launches so big screens don't sit dark while repainting.
+5. [x] Saving painted rooms between launches so big screens don't sit dark while repainting. Painted layers are
+   cached in IndexedDB and replayed (`paint-cache.ts`, `full-paint.ts`); see `docs/perf.md`.
 
 **And the big options (all wanted; ask before starting each, as they're L-sized)**
 - [ ] New painted rooms or views: a rainy café, a train compartment, a lighthouse, a sea cliff, a Tokyo alley.
 - [ ] "Make it yours": swapping props, colours and the cat.
 - [ ] The 3D rooms: retire them, or restyle them to match the painted ones (retire the Japanese room first).
-- [ ] Background painting: painting rooms off the main thread, so the app stays smooth while they paint.
+- [x] Background painting: painting rooms off the main thread, so the app stays smooth while they paint. A Web
+  Worker paints with OffscreenCanvas and the page replays its layers (`paint-worker.ts`).
 
 Following `docs/prompts/next-level.md`. Screenshots come from `scripts/screenshots.cjs` (82 shots: both painted
 rooms at dawn, midday, golden hour, dusk and night × clear, overcast, rain, snow and fog; room and view swaps; the

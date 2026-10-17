@@ -17,15 +17,83 @@ export function paintDraft<T>(fn: () => T): T {
   }
 }
 
+/** A painted image as replay hands it back: anything drawImage takes, with its size. */
+export type Painted = CanvasImageSource & { width: number; height: number };
+
+/** A context that does nothing: what replayed layers draw with, since their painting is already done. */
+const nothing: unknown = new Proxy(function () {}, { get: () => nothing, apply: () => nothing, set: () => true });
+export const NOOP = nothing as CanvasRenderingContext2D;
+
+let recording: { canvases: HTMLCanvasElement[]; sizes: [number, number][] } | null = null;
+let replaying: { images: (Painted | null)[]; sizes: [number, number][]; i: number } | null = null;
+let dpr: number | null = null;
+
+/** A canvas in the page, or off-screen in a worker. */
+const makeCanvas = (w: number, h: number): HTMLCanvasElement => {
+  if (typeof document === "undefined") return new OffscreenCanvas(w, h) as unknown as HTMLCanvasElement;
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  return c;
+};
+
+/** A canvas that's drawn on live (scratch for window light, masks), never recorded or replayed. */
+export function freshCanvas(W: number, H: number) {
+  return makeCanvas(Math.max(1, Math.round(W)), Math.max(1, Math.round(H)));
+}
+
+/** The pixel ratio to paint for, where `window` isn't available (a worker). */
+export function setPaintDpr(value: number) {
+  dpr = value;
+}
+
+/** Runs a build and keeps every layer it paints, in order, with the sizes it asked for, so the same build can be
+ *  replayed later (from the cache, or from a worker) without painting. Freed scratch layers come back as null. */
+export function recordPaint<T>(fn: () => T) {
+  recording = { canvases: [], sizes: [] };
+  try {
+    const result = fn();
+    const { canvases, sizes } = recording;
+    return { result, sizes, canvases: canvases.map((c) => (c.width && c.height ? c : null)) };
+  } finally {
+    recording = null;
+  }
+}
+
+/** Runs a build again with its painted layers handed back instead of painted. Throws if the build asks for
+ *  different layers than were recorded (a different size, or changed code), so the caller can paint for real. */
+export function replayPaint<T>(images: (Painted | null)[], sizes: [number, number][], fn: () => T): T {
+  replaying = { images, sizes, i: 0 };
+  try {
+    const result = fn();
+    if (replaying.i !== images.length) throw new Error("Replay used a different number of layers");
+    return result;
+  } finally {
+    replaying = null;
+  }
+}
+
 /** An offscreen canvas at up to `maxK`× resolution, drawn on in CSS pixels. Painted layers are large, so keep
  *  only the ones you need and `free` scratch layers as soon as they're used. */
 export function layer(W: number, H: number, maxK = 1.5) {
-  const k = Math.min(draft ? 0.6 : maxK, window.devicePixelRatio || 1);
-  const c = document.createElement("canvas");
-  c.width = Math.max(1, Math.round(W * k));
-  c.height = Math.max(1, Math.round(H * k));
+  const k = Math.min(draft ? 0.6 : maxK, dpr ?? (typeof window === "undefined" ? 1 : window.devicePixelRatio || 1));
+  const w = Math.max(1, Math.round(W * k)), h = Math.max(1, Math.round(H * k));
+  if (replaying) {
+    const r = replaying, i = r.i++, img = r.images[i] ?? null, size = r.sizes[i];
+    if (!size || size[0] !== w || size[1] !== h) throw new Error("Replay asked for a different layer");
+    // A layer that was freed while painting is only a stand-in; the others arrive already painted.
+    const c = makeCanvas(img ? w : 1, img ? h : 1);
+    if (img) c.getContext("2d")!.drawImage(img, 0, 0);
+    (c as { getContext: unknown }).getContext = () => NOOP;
+    return { c, x: NOOP };
+  }
+  const c = makeCanvas(w, h);
   const x = c.getContext("2d")!;
   x.scale(k, k);
+  if (recording) {
+    recording.canvases.push(c);
+    recording.sizes.push([w, h]);
+  }
   return { c, x };
 }
 
@@ -72,6 +140,7 @@ export type BrushOpts = {
 
 /** Fills a shape with its colour, then brushes over it with short strokes in nearby colours. */
 export function brush(ctx: CanvasRenderingContext2D, pts: Pt[], col: RGB, rng: Rng, o: BrushOpts) {
+  if (ctx === NOOP) return;
   const s = o.s;
   trace(ctx, pts);
   ctx.fillStyle = rgba(col);

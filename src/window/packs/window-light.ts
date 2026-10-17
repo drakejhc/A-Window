@@ -4,7 +4,7 @@
  *  faint cool patch under a bright moon. Drawn at half size into a scratch canvas, then laid over the room. */
 import type { FrameEnv, Geom } from "../types";
 import { clamp, mixRGB, rgba, smooth, type RGB } from "../util";
-import { layer, trace, type Pt } from "./paint";
+import { freshCanvas, trace, type Pt } from "./paint";
 
 /** A level surface the light can land on, `drop` window-heights below the sill, from `z0` to `z1` window-heights
  *  out from the wall. `at(x, v)` is where a point appears: `x` is the point it lines up with along the sill (in
@@ -23,22 +23,22 @@ export type Occluder = { kind: "fill"; pts: Pt[] } | { kind: "line"; pts: Pt[]; 
 export function lightCanvases(g: Geom, occluders: Occluder[] = []): LightCanvases {
   let mask: HTMLCanvasElement | null = null;
   if (occluders.length) {
-    const m = layer(g.W / 2, g.H / 2, 1);
-    m.x.scale(0.5, 0.5);
-    m.x.fillStyle = m.x.strokeStyle = "#000";
-    m.x.lineCap = m.x.lineJoin = "round";
+    mask = freshCanvas(g.W / 2, g.H / 2);
+    const x = mask.getContext("2d")!;
+    x.scale(0.5, 0.5);
+    x.fillStyle = x.strokeStyle = "#000";
+    x.lineCap = x.lineJoin = "round";
     for (const o of occluders) {
-      m.x.beginPath();
-      o.pts.forEach(([px, py], i) => (i ? m.x.lineTo(px, py) : m.x.moveTo(px, py)));
-      if (o.kind === "fill") m.x.fill();
+      x.beginPath();
+      o.pts.forEach(([px, py], i) => (i ? x.lineTo(px, py) : x.moveTo(px, py)));
+      if (o.kind === "fill") x.fill();
       else {
-        m.x.lineWidth = o.width * 1.5;
-        m.x.stroke();
+        x.lineWidth = o.width * 1.5;
+        x.stroke();
       }
     }
-    mask = m.c;
   }
-  return { scratch: layer(g.W / 2, g.H / 2, 1).c, mask };
+  return { scratch: freshCanvas(g.W / 2, g.H / 2), mask };
 }
 
 const motes = Array.from({ length: 26 }, (_, i) => ({ u: (i * 0.618) % 1, v: (i * 0.371) % 1, h: (i * 0.437) % 1, ph: i * 1.7 }));

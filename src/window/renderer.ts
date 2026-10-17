@@ -1,6 +1,7 @@
 /** Owns one canvas and draws the parts every window shares: sky, stars, sun and moon, clouds, falling weather,
  *  lightning and the glass. A window pack draws the room and the view. */
 import type { Environment } from "./environment";
+import { buildInFull } from "./full-paint";
 import { Glass } from "./glass";
 import { SkyLife } from "./sky-life";
 import { paintDraft } from "./packs/paint";
@@ -163,7 +164,6 @@ export class Renderer {
   private slideAcc = 0;
   private pending = 0;
   private builtFor = "";
-  private fullBuild = 0;
   private P: Painter;
 
   constructor(
@@ -276,10 +276,17 @@ export class Renderer {
       // A scene that is both the view and the room shares one set of data.
       this.roomData = (this.room as unknown) === (this.view as unknown) ? this.viewData : this.room.build(g, makeRng(11));
     };
-    // A quick draft now, so there's a picture straight away, then the full painting once that's on screen.
-    window.clearTimeout(this.fullBuild);
+    // A quick draft now, so there's a picture straight away; then the full painting, from the cache or a worker
+    // where it can be, swapped in when it's ready (unless the size has changed again by then).
     paintDraft(build);
-    this.fullBuild = window.setTimeout(() => key === this.builtFor && build(), 80);
+    const shared = (this.room as unknown) === (this.view as unknown);
+    void Promise.all([buildInFull(this.view, g, 7), shared ? null : buildInFull(this.room, g, 11)])
+      .then(([view, room]) => {
+        if (key !== this.builtFor) return;
+        this.viewData = view;
+        this.roomData = shared ? view : room;
+      })
+      .catch(() => key === this.builtFor && build());
     if (g.framed) this.glass.build(g, this.panes());
   }
 
