@@ -293,12 +293,18 @@ export const paintedStudy: RoomPack<PaintedData> = {
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
     const [tx, ty] = L.target, nX = -L.dy, nY = L.dx;
+    // Feathered: wedges from narrow to wide, each faint, so the light is strongest down the middle and fades to
+    // nothing at its sides and its far end, with no edge to catch the eye.
     const cone = ctx.createLinearGradient(L.x, L.y, tx, ty);
-    cone.addColorStop(0, rgba([255, 196, 130], 0.14 * on));
+    cone.addColorStop(0, rgba([255, 196, 130], 0.028 * on));
+    cone.addColorStop(0.7, rgba([255, 196, 130], 0.01 * on));
     cone.addColorStop(1, rgba([255, 196, 130], 0));
     ctx.fillStyle = cone;
-    trace(ctx, [[L.x + nX * L.r, L.y + nY * L.r], [tx + g.w * 0.16, ty + 10 * s], [tx - g.w * 0.16, ty + 10 * s], [L.x - nX * L.r, L.y - nY * L.r]]);
-    ctx.fill();
+    for (let i = 0; i < 5; i++) {
+      const k = 0.45 + i * 0.22, mouth = L.r * (0.7 + i * 0.15), spread = g.w * 0.16 * k;
+      trace(ctx, [[L.x + nX * mouth, L.y + nY * mouth], [tx + spread, ty], [tx - spread, ty], [L.x - nX * mouth, L.y - nY * mouth]]);
+      ctx.fill();
+    }
     glow(ctx, L.x + L.dx * 4 * s, L.y + L.dy * 4 * s, 70 * s, [255, 210, 150], 0.5 * on);
     glow(ctx, tx, ty, g.w * 0.22, [255, 170, 100], 0.12 * on);
     // The lamp, reflected faintly in the glass.
