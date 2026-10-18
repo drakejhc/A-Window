@@ -55,6 +55,8 @@ export type PaintedData = {
   desk: { by: number; fy: number };
   /** Canvases for window light, with the foreground plant masked out (it's nearer than the desk). */
   light: LightCanvases;
+  /** The lamp's cone of light, painted once and blurred so it has no edges; laid over the room at the lamp's level. */
+  cone: HTMLCanvasElement;
 };
 
 /** A thick stroke as a polygon, so it can be brushed like any other shape. */
@@ -113,7 +115,7 @@ function backMarks(g: Geom, rng: Rng): Mark[] {
   return m;
 }
 
-function frontMarks(g: Geom, rng: Rng, d: Omit<PaintedData, "back" | "front" | "light">): Mark[] {
+function frontMarks(g: Geom, rng: Rng, d: Omit<PaintedData, "back" | "front" | "light" | "cone">): Mark[] {
   const { W, H, s } = g, f = g.frame, m: Mark[] = [];
   const wb = (pts: Pt[], amp = 2) => wobble(pts, rng, amp * s, 16 * s);
   // Window frame and glazing bars.
@@ -274,6 +276,7 @@ export const paintedStudy: RoomPack<PaintedData> = {
     return {
       ...d,
       light,
+      cone: paintCone(g, d.lamp),
       back: { night: back.night.c, day: back.day.c, lamp: back.lamp.c },
       front: { night: front.night.c, day: front.day.c, lamp: front.lamp.c },
     };
@@ -293,18 +296,9 @@ export const paintedStudy: RoomPack<PaintedData> = {
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
     const [tx, ty] = L.target, nX = -L.dy, nY = L.dx;
-    // Feathered: wedges from narrow to wide, each faint, so the light is strongest down the middle and fades to
-    // nothing at its sides and its far end, with no edge to catch the eye.
-    const cone = ctx.createLinearGradient(L.x, L.y, tx, ty);
-    cone.addColorStop(0, rgba([255, 196, 130], 0.028 * on));
-    cone.addColorStop(0.7, rgba([255, 196, 130], 0.01 * on));
-    cone.addColorStop(1, rgba([255, 196, 130], 0));
-    ctx.fillStyle = cone;
-    for (let i = 0; i < 5; i++) {
-      const k = 0.45 + i * 0.22, mouth = L.r * (0.7 + i * 0.15), spread = g.w * 0.16 * k;
-      trace(ctx, [[L.x + nX * mouth, L.y + nY * mouth], [tx + spread, ty], [tx - spread, ty], [L.x - nX * mouth, L.y - nY * mouth]]);
-      ctx.fill();
-    }
+    ctx.globalAlpha = on;
+    ctx.drawImage(d.cone, 0, 0, g.W, g.H);
+    ctx.globalAlpha = 1;
     glow(ctx, L.x + L.dx * 4 * s, L.y + L.dy * 4 * s, 70 * s, [255, 210, 150], 0.5 * on);
     glow(ctx, tx, ty, g.w * 0.22, [255, 170, 100], 0.12 * on);
     // The lamp, reflected faintly in the glass.
@@ -359,6 +353,23 @@ function deskLight(ctx: CanvasRenderingContext2D, env: FrameEnv, g: Geom, d: Pai
   const half = g.mull / 2, transom = (g.y + g.h - g.my) / g.h, m = half / g.h;
   const glazing: Glazing = { cols: [[g.x, g.mx - half], [g.mx + half, g.x + g.w]], rows: [[0, transom - m], [transom + m, 1]] };
   windowLight(ctx, env, g, glazing, [desk], d.light);
+}
+
+/** The lamp's cone: one wedge from the shade's mouth widening to the pool on the desk, brightest at the shade and
+ *  fading to nothing, then blurred so neither its sides nor its end show an edge. */
+function paintCone(g: Geom, L: PaintedData["lamp"]) {
+  const { c, x } = layer(g.W, g.H, 0.5);
+  const [tx, ty] = L.target, nX = -L.dy, nY = L.dx, side = Math.sign(-nX || 1), spread = g.w * 0.17, mouth = L.r * 0.9;
+  x.filter = `blur(${Math.round(9 * g.s)}px)`;
+  const grd = x.createLinearGradient(L.x, L.y, tx, ty);
+  grd.addColorStop(0, "rgba(255,196,130,0.2)");
+  grd.addColorStop(0.6, "rgba(255,196,130,0.07)");
+  grd.addColorStop(1, "rgba(255,196,130,0)");
+  x.fillStyle = grd;
+  // Each side of the shade's mouth runs to its own side of the pool, so the cone never pinches.
+  trace(x, [[L.x + nX * mouth, L.y + nY * mouth], [tx - spread * side, ty + 10 * g.s], [tx + spread * side, ty + 10 * g.s], [L.x - nX * mouth, L.y - nY * mouth]]);
+  x.fill();
+  return c;
 }
 
 /** The lamp is nearly always on in this room: brightest at night, still glowing on a grey day. */
