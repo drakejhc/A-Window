@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { localParts } from "@/window/astro";
 import { SOUND_NAMES, SOUNDS } from "@/scenes";
-import { ROOMS, VIEWS } from "@/window/engine";
+import { autoRoom, ROOMS, VIEWS } from "@/window/engine";
 import { PRESETS } from "@/window/weather";
 
 import { CityPicker } from "./CityPicker";
@@ -22,7 +22,7 @@ type Props = {
 /** The controls along the bottom: the window's city, scene and sound, Focus, the planner and settings. */
 export function Dock({ sheetOpen, onToggleSheet, focusing, onFocus, onSettings }: Props) {
   const { engine, snap } = useWindow();
-  const [open, setOpen] = useState<"city" | "adjust" | null>(null);
+  const [open, setOpen] = useState<"city" | "room" | "adjust" | null>(null);
   const following = snap.shift === 0;
   const hourNow = () => {
     const lp = localParts(engine.now(), snap.city.tz);
@@ -30,7 +30,13 @@ export function Dock({ sheetOpen, onToggleSheet, focusing, onFocus, onSettings }
   };
   const [hour, setHour] = useState(hourNow);
   const fmt = (h: number) => `${String(Math.floor(h) % 24).padStart(2, "0")}:${String(Math.round((h % 1) * 60) % 60).padStart(2, "0")}`;
-  const toggle = (which: "city" | "adjust") => setOpen((o) => (o === which ? null : which));
+  const toggle = (which: "city" | "room" | "adjust") => setOpen((o) => (o === which ? null : which));
+  const autoName = ROOMS.find((r) => r.id === autoRoom(snap.city))?.name ?? "";
+  const roomName = snap.prefs.room === "auto" ? `Auto · ${autoName}` : (ROOMS.find((r) => r.id === snap.prefs.room)?.name ?? "Room");
+  const pickRoom = (id: string) => {
+    engine.setScene({ room: id });
+    setOpen(null);
+  };
 
   return (
     <>
@@ -38,6 +44,34 @@ export function Dock({ sheetOpen, onToggleSheet, focusing, onFocus, onSettings }
         <section className="adjust" aria-label="Choose a city">
           <h2>Where should the window look out?</h2>
           <CityPicker onPick={() => setOpen(null)} />
+        </section>
+      )}
+      {open === "room" && (
+        <section className="adjust" aria-label="Choose a room">
+          <h2>Which room are you in?</h2>
+          <ul className="room-list" role="listbox" aria-label="Rooms">
+            <li>
+              <button type="button" role="option" aria-selected={snap.prefs.room === "auto"} onClick={() => pickRoom("auto")}>
+                <span className="room-swatch" data-room="auto" aria-hidden />
+                <span className="room-text">
+                  <span className="room-name">Auto</span>
+                  <span className="room-blurb">Suits the city: {autoName} for {snap.city.name}</span>
+                </span>
+              </button>
+            </li>
+            {ROOMS.map((r) => (
+              <li key={r.id}>
+                <button type="button" role="option" aria-selected={snap.prefs.room === r.id} onClick={() => pickRoom(r.id)}>
+                  <span className="room-swatch" data-room={r.id} aria-hidden />
+                  <span className="room-text">
+                    <span className="room-name">{r.name}</span>
+                    <span className="room-blurb">{r.blurb}</span>
+                  </span>
+                  <span className="room-kind">{r.three ? "3D" : "Painted"}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
       {open === "adjust" && (
@@ -117,17 +151,10 @@ export function Dock({ sheetOpen, onToggleSheet, focusing, onFocus, onSettings }
           <Icon name="pin" />
           {snap.city.name}
         </button>
-        <label className="sr" htmlFor="room">
-          Room
-        </label>
-        <select id="room" className="ctl" value={snap.prefs.room} onChange={(e) => engine.setScene({ room: e.target.value })}>
-          <option value="auto">Auto (suits the city)</option>
-          {ROOMS.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.name}
-            </option>
-          ))}
-        </select>
+        <button type="button" className="ctl" aria-expanded={open === "room"} aria-haspopup="listbox" onClick={() => toggle("room")} title="Choose a room">
+          {roomName}
+          <Icon name="chevronDown" />
+        </button>
         <button type="button" className="ctl icon" aria-pressed={snap.prefs.sound} aria-label={snap.prefs.sound ? "Turn sound off" : "Turn sound on"} title={snap.prefs.sound ? "Sound on" : "Sound off"} onClick={() => engine.setSound(!snap.prefs.sound)}>
           <Icon name={snap.prefs.sound ? "sound" : "mute"} />
         </button>

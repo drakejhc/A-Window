@@ -24,13 +24,13 @@ export const VIEWS: { id: string; name: string; pack: AnyView }[] = [
   { id: "painted-valley", name: "Painted valley", pack: paintedValley },
 ];
 /** `three` names a rendered 3D room (see `three/`); `pack` is the 2D room shown where WebGL isn't available.
- *  `view` is the view Auto shows from this room. */
-export const ROOMS: { id: string; name: string; pack: AnyRoom; three?: string; view?: string }[] = [
-  { id: "painted", name: "Midnight study (painted)", pack: paintedStudy, view: "painted-city" },
-  { id: "painted-bedroom", name: "Cozy bedroom (painted)", pack: paintedBedroom, view: "painted-valley" },
-  { id: "listening", name: "Listening room (3D)", pack: paintedStudy, three: "listening", view: "painted-city" },
-  { id: "cabin3d", name: "Nordic cabin (3D)", pack: paintedBedroom, three: "cabin", view: "painted-valley" },
-  { id: "mediterranean", name: "Mediterranean (3D)", pack: paintedStudy, three: "mediterranean", view: "painted-city" },
+ *  `view` is the view Auto shows from this room. `blurb` describes it in the room picker. */
+export const ROOMS: { id: string; name: string; blurb: string; pack: AnyRoom; three?: string; view?: string }[] = [
+  { id: "painted", name: "Midnight study", blurb: "A desk lamp, a stack of books and a cat watching the city", pack: paintedStudy, view: "painted-city" },
+  { id: "painted-bedroom", name: "Cozy bedroom", blurb: "Fairy lights, candles and a fire, looking out on the valley", pack: paintedBedroom, view: "painted-valley" },
+  { id: "listening", name: "Listening room", blurb: "A walnut sideboard, a record player and a glowing lamp", pack: paintedStudy, three: "listening", view: "painted-city" },
+  { id: "cabin3d", name: "Nordic cabin", blurb: "Log walls, a window bench and candles on the sill", pack: paintedBedroom, three: "cabin", view: "painted-valley" },
+  { id: "mediterranean", name: "Mediterranean room", blurb: "White walls, blue shutters and lemons on the table", pack: paintedStudy, three: "mediterranean", view: "painted-city" },
 ];
 export type WeatherStatus = "loading" | "live" | "stale" | "offline" | "preset";
 export type WindowPrefs = {
