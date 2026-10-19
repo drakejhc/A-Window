@@ -55,7 +55,7 @@ export function OwnBackgroundOption({ onError }: { onError: (message: string | n
         </span>
         <span className="room-text">
           <span className="room-name">Your own background</span>
-          <span className="room-blurb">{busy ? "Adding it…" : b.day ? b.day.name : "A picture or video of yours, even 4K, in place of the window and the room"}</span>
+          <span className="room-blurb" data-file={(!busy && !!b.day) || undefined} title={b.day?.name}>{busy ? "Adding it…" : b.day ? b.day.name : "A picture or video of yours, even 4K, in place of the window and the room"}</span>
         </span>
         <span className="room-kind">Yours</span>
       </button>

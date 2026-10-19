@@ -457,7 +457,7 @@ select.ctl {
   transition: opacity 0.8s ease, transform 0.8s ease;
 }
 .adjust h2 { margin: 0; font: italic 400 22px/1.1 var(--display); }
-.adjust { max-height: calc(100vh - 140px); overflow-y: auto; }
+.adjust { max-height: calc(100vh - 140px); overflow-y: auto; overflow-x: hidden; grid-template-columns: minmax(0, 1fr); }
 .sounds { display: grid; gap: 8px; }
 .sounds summary { cursor: pointer; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); }
 .sounds[open] summary { margin-bottom: 6px; }
@@ -642,13 +642,15 @@ input[type="range"], input[type="checkbox"] { accent-color: var(--amber); }
 
 /* ---------- room picker ---------- */
 .room-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; max-height: min(62vh, 480px); overflow-y: auto; }
-.room-list button { width: 100%; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 8px 10px; border: 0; border-radius: 12px; background: none; text-align: left; }
+.room-list button { width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 8px 10px; border: 0; border-radius: 12px; background: none; text-align: left; }
 .room-list button:hover { background: var(--hover); }
 .room-list button[aria-selected="true"] { background: rgba(233, 184, 114, 0.12); }
 .room-list button[aria-selected="true"] .room-name { color: var(--amber); }
 .room-text { display: grid; gap: 2px; min-width: 0; }
 .room-name { font-size: 14px; }
-.room-blurb { font-size: 12px; color: var(--faint); line-height: 1.35; }
+.room-blurb { font-size: 12px; color: var(--faint); line-height: 1.35; overflow-wrap: anywhere; }
+/* A long file name stays on one line, cut short. */
+.room-blurb[data-file] { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .room-kind { font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); }
 /* A little painted swatch of each room's light. */
 .room-swatch { width: 38px; height: 38px; border-radius: 10px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); }
@@ -659,7 +661,7 @@ input[type="range"], input[type="checkbox"] { accent-color: var(--amber); }
 .room-swatch[data-room="cabin3d"] { background: repeating-linear-gradient(180deg, #8a5634 0 6px, #6b4026 6px 8px), #7a4a2c; }
 .room-swatch[data-room="mediterranean"] { background: linear-gradient(90deg, #2b5aa8 0 22%, #f1ece2 22% 78%, #2b5aa8 78%); }
 .room-swatch[data-room="own"] { background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)); display: grid; place-items: center; color: var(--muted); background-size: cover; background-position: center; }
-.own-settings { display: grid; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.own-settings { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
 .own-file { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 .own-file .own-label { flex: none; width: 6.5em; color: var(--muted); }
 .own-file .own-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
