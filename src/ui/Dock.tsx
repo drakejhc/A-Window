@@ -2,11 +2,12 @@ import { useState } from "react";
 
 import { localParts } from "@/window/astro";
 import { SOUND_NAMES, SOUNDS } from "@/scenes";
-import { autoRoom, ROOMS, VIEWS } from "@/window/engine";
+import { autoRoom, OWN_ROOM, ROOMS, VIEWS } from "@/window/engine";
 import { PRESETS } from "@/window/weather";
 
 import { CityPicker } from "./CityPicker";
 import { Icon } from "./icons";
+import { OwnBackgroundOption, OwnBackgroundSettings } from "./OwnBackground";
 import { useWindow } from "./use-window";
 
 export const FOCUS_LENGTHS = [15, 25, 50, 90];
@@ -23,6 +24,7 @@ type Props = {
 export function Dock({ sheetOpen, onToggleSheet, focusing, onFocus, onSettings }: Props) {
   const { engine, snap } = useWindow();
   const [open, setOpen] = useState<"city" | "room" | "adjust" | null>(null);
+  const [ownError, setOwnError] = useState<string | null>(null);
   const following = snap.shift === 0;
   const hourNow = () => {
     const lp = localParts(engine.now(), snap.city.tz);
@@ -32,7 +34,8 @@ export function Dock({ sheetOpen, onToggleSheet, focusing, onFocus, onSettings }
   const fmt = (h: number) => `${String(Math.floor(h) % 24).padStart(2, "0")}:${String(Math.round((h % 1) * 60) % 60).padStart(2, "0")}`;
   const toggle = (which: "city" | "room" | "adjust") => setOpen((o) => (o === which ? null : which));
   const autoName = ROOMS.find((r) => r.id === autoRoom(snap.city))?.name ?? "";
-  const roomName = snap.prefs.room === "auto" ? `Auto · ${autoName}` : (ROOMS.find((r) => r.id === snap.prefs.room)?.name ?? "Room");
+  const roomName =
+    snap.prefs.room === "auto" ? `Auto · ${autoName}` : snap.own ? "Your background" : (ROOMS.find((r) => r.id === snap.prefs.room)?.name ?? "Room");
   const pickRoom = (id: string) => {
     engine.setScene({ room: id });
     setOpen(null);
@@ -71,7 +74,9 @@ export function Dock({ sheetOpen, onToggleSheet, focusing, onFocus, onSettings }
                 </button>
               </li>
             ))}
+            <OwnBackgroundOption onError={setOwnError} />
           </ul>
+          {snap.own ? <OwnBackgroundSettings error={ownError} onError={setOwnError} /> : ownError && <p className="own-error">{ownError}</p>}
         </section>
       )}
       {open === "adjust" && (

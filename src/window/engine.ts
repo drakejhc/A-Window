@@ -32,6 +32,8 @@ export const ROOMS: { id: string; name: string; blurb: string; pack: AnyRoom; th
   { id: "cabin3d", name: "Nordic cabin", blurb: "Log walls, a window bench and candles on the sill", pack: paintedBedroom, three: "cabin", view: "painted-valley" },
   { id: "mediterranean", name: "Mediterranean room", blurb: "White walls, blue shutters and lemons on the table", pack: paintedStudy, three: "mediterranean", view: "painted-city" },
 ];
+/** The room id for your own picture or video in place of the window (see src/backdrop.ts). */
+export const OWN_ROOM = "own";
 export type WeatherStatus = "loading" | "live" | "stale" | "offline" | "preset";
 export type WindowPrefs = {
   city: string;
@@ -51,6 +53,8 @@ export type WindowSnapshot = {
   room: AnyRoom;
   /** The 3D room to render instead of `room`, if one is chosen. */
   room3d: string | null;
+  /** Your own background instead of the window. */
+  own: boolean;
   status: WeatherStatus;
   weather: Weather;
   /** Milliseconds the scene is shifted from the real time, for previewing dusk or night. */
@@ -107,7 +111,7 @@ function loadPrefs(): WindowPrefs {
       volume: typeof p.volume === "number" ? Math.min(1, Math.max(0, p.volume)) : fallback.volume,
       preset: typeof p.preset === "number" ? p.preset : null,
       view: VIEWS.some((v) => v.id === p.view) ? p.view! : "auto",
-      room: ROOMS.some((r) => r.id === p.room) ? p.room! : "auto",
+      room: p.room === OWN_ROOM || ROOMS.some((r) => r.id === p.room) ? p.room! : "auto",
       mix: cleanMix(p.mix),
       custom: p.custom && typeof p.custom.lat === "number" && typeof p.custom.tz === "string" ? p.custom : undefined,
     };
@@ -137,8 +141,10 @@ export function sceneFor(prefs: Pick<WindowPrefs, "view" | "room">, city: City) 
   const view = VIEWS.find((v) => v.id === prefs.view)?.pack ?? auto;
   const room = entry.pack;
   // Weather sounds come from outside; the fire and its crackle belong to the room.
-  const ambience: AmbienceWeights = { ...view.ambience, fire: room.ambience.fire };
-  return { view, room, room3d: entry.three ?? null, ambience };
+  // Your own background has the weather's sounds, but no fire of its own.
+  const own = prefs.room === OWN_ROOM;
+  const ambience: AmbienceWeights = { ...view.ambience, fire: own ? 0 : room.ambience.fire };
+  return { view, room, room3d: own ? null : (entry.three ?? null), own, ambience };
 }
 
 export class WindowEngine {
@@ -420,7 +426,7 @@ export class WindowEngine {
   }
 
   private publish() {
-    const { view, room, room3d, ambience } = sceneFor(this.prefs, this.city);
+    const { view, room, room3d, own, ambience } = sceneFor(this.prefs, this.city);
     this.audio.setWeights(ambience);
     this.audio.setMix(this.prefs.mix);
     this.snapshot = {
@@ -429,6 +435,7 @@ export class WindowEngine {
       view,
       room,
       room3d,
+      own,
       status: this.prefs.preset !== null ? "preset" : this.status,
       weather: this.effectiveWeather(),
       shift: this.shift,

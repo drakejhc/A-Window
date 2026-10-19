@@ -62,6 +62,19 @@ button:disabled { cursor: default; opacity: 0.45; }
 .scene-layer { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .scene-view { position: absolute; display: block; filter: blur(0.7px); will-change: transform; }
 .scene-glow { mix-blend-mode: screen; pointer-events: none; }
+/* Your own background, in place of the window and the room. */
+.backdrop { overflow: hidden; background: #0b0a10; }
+.backdrop-media { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: cover; }
+.backdrop-media[data-fit="contain"] { object-fit: contain; }
+.backdrop-fill { filter: blur(40px) brightness(0.6); transform: scale(1.15); }
+.backdrop-night { position: absolute; inset: 0; transition: opacity 2s linear; }
+.backdrop-dim { position: absolute; inset: 0; background: #05060c; opacity: 0; pointer-events: none; transition: opacity 2s linear; }
+.backdrop-weather { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+.backdrop-empty { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); background: radial-gradient(ellipse at 50% 40%, #232638, #0b0a10 70%); }
+/* A faint shade behind the clock and the dock, so they read over a bright picture. */
+.backdrop::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 34% 26% at 0 0, rgba(0, 0, 0, 0.32), transparent), linear-gradient(to top, rgba(0, 0, 0, 0.22), transparent 18%); }
+[data-own] .readout { text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45); }
+
 /* A soft vignette, as a lens would give. */
 .scene3d::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 75% 70% at 50% 52%, transparent 55%, rgba(10, 5, 2, 0.55)); }
 
@@ -645,6 +658,12 @@ input[type="range"], input[type="checkbox"] { accent-color: var(--amber); }
 .room-swatch[data-room="listening"] { background: radial-gradient(circle at 76% 40%, #ffd39a 0 10%, rgba(255, 170, 90, 0.4) 26%, transparent 50%), linear-gradient(180deg, #d9b48c 0 52%, #5a3622 52%); }
 .room-swatch[data-room="cabin3d"] { background: repeating-linear-gradient(180deg, #8a5634 0 6px, #6b4026 6px 8px), #7a4a2c; }
 .room-swatch[data-room="mediterranean"] { background: linear-gradient(90deg, #2b5aa8 0 22%, #f1ece2 22% 78%, #2b5aa8 78%); }
+.room-swatch[data-room="own"] { background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)); display: grid; place-items: center; color: var(--muted); background-size: cover; background-position: center; }
+.own-settings { display: grid; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.own-file { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.own-file .own-label { flex: none; width: 6.5em; color: var(--muted); }
+.own-file .own-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.own-error { margin: 0; font-size: 12.5px; color: #f0a08a; }
 
 /* ---------- city picker ---------- */
 .city-picker { display: grid; gap: 8px; min-height: 0; }

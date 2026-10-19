@@ -51,6 +51,10 @@ npm test
     with any view.
   - **Auto** picks a room to suit the city: the cabin in the far north and south, the study in East Asia, the
     Mediterranean room where it's warm, and the Listening room elsewhere.
+  - **Your own background:** the last choice in the room menu replaces the window and the room with a picture or
+    video of yours (a 4K photo, a looping MP4 or WebM, an animated GIF), kept on this device only. Optionally: a
+    second one for after dark that fades in at sunset in the window's city, dimming after dark, and the city's rain
+    and snow on the glass over it.
   - **The glass:** frost grows on it on cold mornings, mist forms when it's cold and damp (drag to wipe it), and
     the lit room reflects in it at night.
   - **Adjust:** picks the view, the weather, a preview of another time of day, the volume, and under *Sounds* your

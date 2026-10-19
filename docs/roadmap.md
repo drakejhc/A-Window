@@ -210,6 +210,8 @@ Baseline so far:
   - recent places in the city picker;
   - the moon: brighter and dimmer with altitude and darkness, its phase and position from its real orbit (within
     about 4 h of real new and full moons), and its lit side facing the sun.
+  - your own background: a picture or video in place of the window and the room, with an optional night one that
+    fades in at sunset, dimming and live rain and snow over it.
 - **In progress:** none.
 - **Next:** new painted places (a sea cliff view, a rainy café room, a Tokyo alley view), when the owner wants them.
 - **Learned:** in headless software rendering, a full painted-room paint takes 5–10 s at desktop sizes. The

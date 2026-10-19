@@ -16,6 +16,7 @@ import { Sheet } from "@/ui/Sheet";
 import { useWindow } from "@/ui/use-window";
 import { desktop } from "@/desktop";
 import { makeBackup } from "@/backup";
+import { loadBackdrop } from "@/backdrop";
 import { useMusic, watchMusic } from "@/music";
 import { followSaver } from "@/power";
 import { minutesOf, scheduledScene, useScenesState, type SavedScene } from "@/scenes";
@@ -76,7 +77,8 @@ export function App() {
   const { settings } = settingsApi;
   const planner = usePlanner();
   const { state } = planner;
-  const { engine } = useWindow();
+  const { engine, snap: windowSnap } = useWindow();
+  const own = windowSnap.own;
 
   const [clock, setClock] = useState(() => new Date());
   useEffect(() => {
@@ -335,16 +337,18 @@ export function App() {
     return () => window.clearInterval(t);
   }, [scenes, showScene]);
 
-  // The planner's glass takes on the scene's current colour: the sky, warmed by the lamp when it's on.
+  // The planner's glass takes on the scene's current colour: the sky, warmed by the lamp when it's on, or the
+  // colour of your own background.
   useEffect(() => {
     const update = () => {
-      const e = engine.env, c = mixRGB(e.sky.bottom, e.lampColor, Math.min(1, e.lamp * 0.6));
+      const e = engine.env, b = own ? loadBackdrop() : null, file = b && (b.night && e.night > 0.5 ? b.night : b.day);
+      const c = file ? mixRGB(file.tint, [0, 0, 0], b.dim && !b.night ? e.night * 0.5 : 0) : mixRGB(e.sky.bottom, e.lampColor, Math.min(1, e.lamp * 0.6));
       document.documentElement.style.setProperty("--scene-rgb", c.map(Math.round).join(", "));
     };
     update();
     const t = window.setInterval(update, 4000);
     return () => window.clearInterval(t);
-  }, [engine]);
+  }, [engine, own]);
 
   // Music from Spotify or Apple Music (desktop app): watch it, and turn the ambience down while it plays.
   useEffect(() => watchMusic(settings.music), [settings.music]);
@@ -417,7 +421,7 @@ export function App() {
 
   return (
     <SettingsContext.Provider value={settingsApi}>
-    <div className="app" data-idle={idle || undefined} data-side={sideOpen || undefined} data-workspace={ws.visible || undefined} style={{ "--side-w": `${SIDE_W}px` } as React.CSSProperties}>
+    <div className="app" data-own={own || undefined} data-idle={idle || undefined} data-side={sideOpen || undefined} data-workspace={ws.visible || undefined} style={{ "--side-w": `${SIDE_W}px` } as React.CSSProperties}>
       <Scene align={align} />
       <Readout />
 

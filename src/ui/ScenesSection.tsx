@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { uid } from "@/planner/model";
 import { formatMinutes, parseMinutes, type SavedScene, type ScenesState } from "@/scenes";
-import { ROOMS, VIEWS } from "@/window/engine";
+import { OWN_ROOM, ROOMS, VIEWS } from "@/window/engine";
 
 import { useWindow } from "./use-window";
 
@@ -12,7 +12,7 @@ type Props = {
   onShow: (scene: SavedScene) => void;
 };
 
-const roomName = (id: string) => (id === "auto" ? "Auto room" : (ROOMS.find((r) => r.id === id)?.name ?? id));
+const roomName = (id: string) => (id === "auto" ? "Auto room" : id === OWN_ROOM ? "Your own background" : (ROOMS.find((r) => r.id === id)?.name ?? id));
 const viewName = (id: string) => (id === "auto" ? "its own view" : (VIEWS.find((v) => v.id === id)?.name ?? id));
 
 /** Saved scenes in Settings: save the window as it is, show one again, and schedule them through the day. */

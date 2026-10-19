@@ -6,6 +6,7 @@ import { getWindowEngine } from "@/window/engine";
 import { Renderer } from "@/window/renderer";
 import type { Room3D } from "@/window/three/room3d";
 
+import { Backdrop } from "./Backdrop";
 import { useWindow } from "./use-window";
 
 type Props = { align: number; framed?: boolean };
@@ -17,18 +18,20 @@ export function Scene({ align, framed = true }: Props) {
   const [failed, setFailed] = useState<string | null>(null);
   // Changing room or view fades through a dark curtain: the new scene is built behind it (which can take a moment)
   // and the curtain lifts once its first frame is drawn, instead of freezing on a black or half-built screen.
-  const [shown, setShown] = useState({ view: snap.view, room: snap.room, room3d: snap.room3d });
+  const [shown, setShown] = useState({ view: snap.view, room: snap.room, room3d: snap.room3d, own: snap.own });
   const [curtain, setCurtain] = useState(false);
-  const same = shown.view === snap.view && shown.room === snap.room && shown.room3d === snap.room3d;
+  const same = shown.view === snap.view && shown.room === snap.room && shown.room3d === snap.room3d && shown.own === snap.own;
   useEffect(() => {
     if (same) return;
     setCurtain(true);
-    const t = window.setTimeout(() => setShown({ view: snap.view, room: snap.room, room3d: snap.room3d }), 300);
+    const t = window.setTimeout(() => setShown({ view: snap.view, room: snap.room, room3d: snap.room3d, own: snap.own }), 300);
     return () => window.clearTimeout(t);
-  }, [same, snap.view, snap.room, snap.room3d]);
+  }, [same, snap.view, snap.room, snap.room3d, snap.own]);
   const ready = useCallback(() => requestAnimationFrame(() => requestAnimationFrame(() => setCurtain(false))), []);
-  const scene =
-    framed && shown.room3d && failed !== shown.room3d ? (
+  // Your own background replaces the window and the room altogether.
+  const scene = shown.own ? (
+    <Backdrop onReady={ready} />
+  ) : framed && shown.room3d && failed !== shown.room3d ? (
       <Scene3D key={shown.room3d} design={shown.room3d} view={shown.view} align={align} onReady={ready} onFail={() => setFailed(shown.room3d)} />
     ) : (
       <Scene2D align={align} framed={framed} view={shown.view} room={shown.room} onReady={ready} />

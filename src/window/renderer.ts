@@ -12,6 +12,9 @@ import { clamp, makeRng, mixRGB, rgba, smooth, type RGB, type Rng } from "./util
 export type RendererOptions = {
   /** true: the room with a window in it. false: the view fills the canvas, as if the screen were the glass. */
   framed: boolean;
+  /** Only the weather (rain, snow, drops on the glass, lightning) on a transparent canvas, over a picture of
+   *  your own. Nothing is painted. */
+  overlay?: boolean;
   /** Horizontal centre of the window as a fraction of the width (framed mode). */
   align?: number;
   /** Parallax strength; 0 turns it off. */
@@ -172,7 +175,7 @@ export class Renderer {
     private room: AnyRoom,
     private opts: RendererOptions,
   ) {
-    this.ctx = canvas.getContext("2d", { alpha: false })!;
+    this.ctx = canvas.getContext("2d", { alpha: !!opts.overlay })!;
     this.reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
     this.P = { par: (d) => this.par(d), shade: (c, env, depth) => this.shade(c, env, depth) };
     this.resize();
@@ -271,6 +274,7 @@ export class Renderer {
     this.beads = [];
     this.sliders = [];
     this.trails = [];
+    if (this.opts.overlay) return;
     const build = () => {
       this.viewData = this.view.build(g, makeRng(7));
       // A scene that is both the view and the room shares one set of data.
@@ -346,6 +350,16 @@ export class Renderer {
     this.pointer.y += (this.pointer.ty - this.pointer.y) * k;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
 
+    if (this.opts.overlay) {
+      ctx.clearRect(0, 0, g.W, g.H);
+      this.drawPrecip(env);
+      if (env.flash > 0.01) {
+        ctx.fillStyle = rgba([225, 230, 255], env.flash * 0.4);
+        ctx.fillRect(0, 0, g.W, g.H);
+      }
+      this.drawGlass(env);
+      return;
+    }
     if (g.framed) this.room.drawRoom(ctx, env, g, this.roomData, this.P);
     ctx.save();
     ctx.beginPath();
