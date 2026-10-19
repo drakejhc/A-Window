@@ -41,6 +41,15 @@ group("live window astronomy", () => {
     ).toBeLessThan(0.05);
   });
 
+  it("times the phase to within a few hours, checked against 2026's eclipses", () => {
+    // An eclipse happens exactly at new (solar) or full (lunar) moon. 0.006 of a cycle is about four hours.
+    const off = (date: Date, target: number) => Math.min(Math.abs(moonPhase(date) - target), 1 - Math.abs(moonPhase(date) - target));
+    expect(off(new Date(Date.UTC(2026, 1, 17, 12, 12)), 0)).toBeLessThan(0.006); // annular solar eclipse
+    expect(off(new Date(Date.UTC(2026, 2, 3, 11, 33)), 0.5)).toBeLessThan(0.006); // total lunar eclipse
+    expect(off(new Date(Date.UTC(2026, 7, 12, 17, 46)), 0)).toBeLessThan(0.006); // total solar eclipse
+    expect(off(new Date(Date.UTC(2026, 7, 28, 4, 13)), 0.5)).toBeLessThan(0.006); // partial lunar eclipse
+  });
+
   it("flips the seasons south of the equator and keeps the tropics in summer", () => {
     expect(seasonFor(1, 35)).toBe("winter");
     expect(seasonFor(1, -41)).toBe("summer");

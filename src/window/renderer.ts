@@ -526,12 +526,15 @@ export class Renderer {
   private drawCelestial(env: FrameEnv) {
     const { ctx, geom: g } = this;
     const facing = env.city.lat >= 0 ? 180 : 0;
+    // Low in the sky, a degree of altitude is a fixed slice of the glass; higher up the scale eases off, so even
+    // an overhead moon stays just inside the top of the window instead of leaving it.
+    const room = g.horizon - g.y - g.h * 0.08, ease = (room * 55) / g.h;
     const pos = (alt: number, az: number) => {
       const rel = ((az - facing + 540) % 360) - 180,
         p = this.par(0.05);
       return {
         x: g.x + g.w * (0.5 + rel / 150) + p.x,
-        y: g.horizon - (alt / 55) * g.h + p.y,
+        y: g.horizon - room * Math.tanh(alt / ease) + p.y,
         vis: Math.abs(rel) < 90,
       };
     };
@@ -574,25 +577,27 @@ export class Renderer {
         glow.addColorStop(1, rgba(halo, 0));
         ctx.fillStyle = glow;
         ctx.fillRect(g.x, g.y, g.w, g.h);
+        // The lit side faces the sun, wherever it is (below the horizon at night), so a crescent tilts through the
+        // night and is lit on the left south of the equator. The direction is the great circle from moon to sun,
+        // measured from straight up toward rising azimuth, which is rightward on screen whichever way the window
+        // faces. The terminator is half an ellipse: bulging into the lit side for a crescent, into the dark side
+        // for a gibbous moon.
+        const D = Math.PI / 180, hm = env.moonAlt * D, hs = env.sunAlt * D, dA = (env.sunAz - env.moonAz) * D;
+        const chi = Math.atan2(Math.cos(hs) * Math.sin(dA), Math.cos(hm) * Math.sin(hs) - Math.sin(hm) * Math.cos(hs) * Math.cos(dA));
+        const toward = Math.atan2(-Math.cos(chi), Math.sin(chi));
+        const k = (1 - Math.cos(p * Math.PI * 2)) / 2, ex = mr * (1 - 2 * k);
+        ctx.save();
+        ctx.translate(m.x, m.y);
+        ctx.rotate(toward);
+        // The unlit part, faintly there against a dark sky (earthshine).
+        ctx.fillStyle = rgba(tone, 0.07 * vis * dark);
+        ctx.beginPath();
+        ctx.arc(0, 0, mr, 0, Math.PI * 2);
+        ctx.fill();
         ctx.fillStyle = rgba(tone, vis * (0.5 + 0.5 * bright));
         ctx.beginPath();
-        ctx.arc(m.x, m.y, mr, 0, Math.PI * 2);
-        ctx.fill();
-        // Phase: cover the disc with a sky-coloured circle offset by the illuminated fraction.
-        const d = mr * (1 - Math.cos(p * Math.PI * 2)),
-          dir = p < 0.5 ? -1 : 1;
-        const skyHere = mixRGB(
-          env.sky.top,
-          env.sky.bottom,
-          clamp((m.y - g.y) / (g.horizon + g.h * 0.1 - g.y)),
-        );
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(m.x, m.y, mr + 0.5, 0, Math.PI * 2);
-        ctx.clip();
-        ctx.fillStyle = rgba(skyHere, 0.94);
-        ctx.beginPath();
-        ctx.arc(m.x + dir * d, m.y, mr + 1, 0, Math.PI * 2);
+        ctx.arc(0, 0, mr, -Math.PI / 2, Math.PI / 2);
+        ctx.ellipse(0, 0, Math.abs(ex), mr, 0, Math.PI / 2, -Math.PI / 2, ex > 0);
         ctx.fill();
         ctx.restore();
       }

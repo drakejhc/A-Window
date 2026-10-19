@@ -11,12 +11,12 @@ function sunLongitude(d: number) {
   return q + 1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g);
 }
 
-/** Ecliptic longitude (latitude taken as 0) to altitude and azimuth for an observer. */
-function toHorizontal(lambda: number, d: number, lat: number, lon: number): Horizontal {
+/** Ecliptic longitude and latitude to altitude and azimuth for an observer. */
+function toHorizontal(lambda: number, d: number, lat: number, lon: number, beta = 0): Horizontal {
   const e = (23.439 - 0.00000036 * d) * RAD;
-  const l = lambda * RAD;
-  const ra = Math.atan2(Math.cos(e) * Math.sin(l), Math.cos(l));
-  const dec = Math.asin(Math.sin(e) * Math.sin(l));
+  const l = lambda * RAD, b = beta * RAD;
+  const ra = Math.atan2(Math.sin(l) * Math.cos(e) - Math.tan(b) * Math.sin(e), Math.cos(l));
+  const dec = Math.asin(Math.sin(b) * Math.cos(e) + Math.cos(b) * Math.sin(e) * Math.sin(l));
   const gmst = ((280.46061837 + 360.98564736629 * d) % 360) * RAD;
   const H = gmst + lon * RAD - ra;
   const phi = lat * RAD;
@@ -32,17 +32,31 @@ export function sunPosition(date: Date, lat: number, lon: number) {
   return toHorizontal(sunLongitude(d), d, lat, lon);
 }
 
-/** 0 = new moon, 0.5 = full. */
+/** The Moon's ecliptic longitude and latitude: its mean motion plus the largest periodic terms (the equation of
+ *  the centre, evection, variation and the annual equation), good to a fraction of a degree. */
+function moonEcliptic(d: number) {
+  const L = 218.316 + 13.176396 * d,
+    M = (134.963 + 13.064993 * d) * RAD,
+    F = (93.272 + 13.22935 * d) * RAD,
+    D = (297.85 + 12.190749 * d) * RAD,
+    Ms = (357.529 + 0.98560028 * d) * RAD;
+  const lambda =
+    L + 6.289 * Math.sin(M) + 1.274 * Math.sin(2 * D - M) + 0.658 * Math.sin(2 * D) + 0.214 * Math.sin(2 * M) - 0.186 * Math.sin(Ms) - 0.114 * Math.sin(2 * F);
+  return { lambda, beta: 5.128 * Math.sin(F) };
+}
+
+/** Where the Moon is in its cycle from the real angle between it and the Sun: 0 = new, 0.25 = first quarter,
+ *  0.5 = full, 0.75 = last quarter. */
 export function moonPhase(date: Date) {
-  const synodic = 29.530588853;
-  const ref = Date.UTC(2000, 0, 6, 18, 14) / 86400000;
-  return ((((date.getTime() / 86400000 - ref) % synodic) + synodic) % synodic) / synodic;
+  const d = daysSinceJ2000(date);
+  const elongation = moonEcliptic(d).lambda - sunLongitude(d);
+  return (((elongation % 360) + 360) % 360) / 360;
 }
 
 export function moonPosition(date: Date, lat: number, lon: number) {
   const d = daysSinceJ2000(date);
-  const phase = moonPhase(date);
-  return { ...toHorizontal(sunLongitude(d) + phase * 360, d, lat, lon), phase };
+  const { lambda, beta } = moonEcliptic(d);
+  return { ...toHorizontal(lambda, d, lat, lon, beta), phase: moonPhase(date) };
 }
 
 /** Next sunrise and sunset after `date`; null during polar day or night. */

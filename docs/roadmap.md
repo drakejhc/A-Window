@@ -199,9 +199,18 @@ Baseline so far:
   - the bedroom's bed (quilting and a knitted throw);
   - planner glass tinted by the scene;
   - the window scales with big and ultra-wide screens;
-  - draft-first painting.
+  - draft-first painting;
+  - the glass at night (room reflection, condensation, frost);
+  - a per-sound mixer and saved scenes with a schedule;
+  - painted rooms cached between launches and painted off the main thread;
+  - the Japanese 3D room retired;
+  - make it yours (cat, lamp colour, wall palette);
+  - the room picker restyled like the city picker, and the lamp's light cone fixed;
+  - click the timeline to add an event there, and a 24-hour timeline;
+  - recent places in the city picker;
+  - the moon: brighter and dimmer with altitude and darkness, its phase and position from its real orbit (within
+    about 4 h of real new and full moons), and its lit side facing the sun.
 - **In progress:** none.
-- **Next:** the build list: the glass at night (reflection, condensation, frost), then saved scenes and a sound
-  mixer, then caching painted rooms between launches.
+- **Next:** new painted places (a sea cliff view, a rainy café room, a Tokyo alley view), when the owner wants them.
 - **Learned:** in headless software rendering, a full painted-room paint takes 5–10 s at desktop sizes. The
   screenshot script waits 9 s per painted shot.
