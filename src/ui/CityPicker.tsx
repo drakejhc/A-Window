@@ -6,7 +6,28 @@ import { searchCities, searchOffline } from "@/window/geocode";
 
 import { useWindow } from "./use-window";
 
-/** Search any city in the world; the built-in list shows until you type. */
+const RECENT_KEY = "a-window:recent-cities";
+
+/** Places you've picked from search (towns not in the built-in list), most recent first. */
+function loadRecent(): City[] {
+  try {
+    const r = JSON.parse(window.localStorage.getItem(RECENT_KEY) ?? "[]") as City[];
+    return Array.isArray(r) ? r.filter((c) => c && typeof c.id === "string" && typeof c.lat === "number" && typeof c.tz === "string").slice(0, 6) : [];
+  } catch {
+    return [];
+  }
+}
+function remember(c: City) {
+  if (CITIES.some((b) => b.id === c.id)) return;
+  try {
+    window.localStorage.setItem(RECENT_KEY, JSON.stringify([c, ...loadRecent().filter((r) => r.id !== c.id)].slice(0, 6)));
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+/** Search any city or town in the world; places you've picked before, then the built-in list, show until you
+ *  type. */
 export function CityPicker({ onPick, autoFocus = true }: { onPick?: () => void; autoFocus?: boolean }) {
   const { engine, snap } = useWindow();
   const [query, setQuery] = useState("");
@@ -42,11 +63,13 @@ export function CityPicker({ onPick, autoFocus = true }: { onPick?: () => void; 
     };
   }, [query]);
 
-  const list = !query.trim() && !CITIES.some((c) => c.id === snap.city.id) ? [snap.city, ...results] : results;
+  const recent = loadRecent();
+  const extra = [...(CITIES.some((c) => c.id === snap.city.id) ? [] : [snap.city]), ...recent].filter((c, i, all) => all.findIndex((x) => x.id === c.id) === i);
+  const list = query.trim() ? results : [...extra, ...results];
   const now = new Date();
   return (
     <div className="city-picker">
-      <input className="search" autoFocus={autoFocus} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search for any city" aria-label="Search for a city" />
+      <input className="search" autoFocus={autoFocus} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search any city or town" aria-label="Search for a city or town" />
       <ul className="city-list" role="listbox" aria-label="Cities">
         {list.map((c) => (
           <li key={c.id}>
@@ -56,6 +79,7 @@ export function CityPicker({ onPick, autoFocus = true }: { onPick?: () => void; 
               aria-selected={c.id === snap.city.id}
               onClick={() => {
                 engine.setCity(c.id, c);
+                remember(c);
                 onPick?.();
               }}
             >

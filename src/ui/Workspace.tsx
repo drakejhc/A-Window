@@ -33,6 +33,7 @@ type Props = {
   onPlace: (kind: Kind, id: string, date: string, start: number) => void;
   onSchedule: (id: string) => void;
   onBlocked: () => void;
+  onCreate: (date: string, start: number) => void;
   onReplan: () => void;
   onFocus: () => void;
   onQuickAdd: () => void;
@@ -189,6 +190,7 @@ export function Workspace(p: Props) {
                   onToggle={p.onToggle}
                   onPlace={p.onPlace}
                   onBlocked={p.onBlocked}
+                  onCreate={p.onCreate}
                 />
               </>
             )}

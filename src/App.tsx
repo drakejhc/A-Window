@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { blocksOn, currentBlock, END_HOUR, formatHour, fromKey, nowHour, parseTime, snap, START_HOUR, toKey, addDays, clamp, type Kind } from "@/planner/model";
+import { blocksOn, currentBlock, DAY_START, END_HOUR, formatHour, fromKey, nowHour, parseTime, snap, START_HOUR, toKey, addDays, clamp, type Kind } from "@/planner/model";
 import { findOpenSlot, isSlipped, isSlotFree, planReplan, type ReplanResult } from "@/planner/planning";
 import { parseQuickAdd } from "@/planner/quickadd";
 import { usePlanner, type PlannerState } from "@/planner/store";
@@ -131,7 +131,12 @@ export function App() {
     setSheetOpen(true);
   }
 
-  const newEvent = () => setDraft(newDraft("event", selected, selected === todayKey ? `${String(Math.min(22, Math.ceil(now))).padStart(2, "0")}:00` : "09:00"));
+  const newEvent = () => setDraft(newDraft("event", selected, selected === todayKey ? `${String(Math.min(23, Math.ceil(now))).padStart(2, "0")}:00` : "09:00"));
+  // Clicking an empty part of the timeline starts an event at that time.
+  const newEventAt = (date: string, start: number) => {
+    setSelected(date);
+    setDraft(newDraft("event", date, `${String(Math.floor(start)).padStart(2, "0")}:${String(Math.round((start % 1) * 60)).padStart(2, "0")}`));
+  };
 
   function saveDraft() {
     if (!draft) return;
@@ -178,7 +183,7 @@ export function App() {
         planner.addTask({ title: p.title, duration, category: p.category ?? "personal", bucket: p.bucket ?? "Today" });
         return notify(`${formatHour(start)} is taken, so “${p.title}” went to your list instead`);
       }
-    } else if (date) start = findOpenSlot(blocksOn(state, date), duration, date === todayKey ? now : START_HOUR, END_HOUR);
+    } else if (date) start = findOpenSlot(blocksOn(state, date), duration, date === todayKey ? now : DAY_START, END_HOUR);
     if (start === undefined) date = undefined;
     const bucket = p.bucket ?? (!p.date || p.date === todayKey ? "Today" : "This Week");
     planner.addTask({ title: p.title, duration, category: p.category ?? "personal", bucket, date, start });
@@ -191,7 +196,7 @@ export function App() {
   function scheduleNext(id: string) {
     const task = state.tasks.find((t) => t.id === id);
     if (!task) return;
-    const start = findOpenSlot(blocksOn(state, selected), task.duration, selected === todayKey ? now : START_HOUR, END_HOUR);
+    const start = findOpenSlot(blocksOn(state, selected), task.duration, selected === todayKey ? now : DAY_START, END_HOUR);
     if (start === undefined) return notify(`No free slot left ${dayName(selected) === "today" ? "today" : `on ${dayName(selected)}`}`);
     planner.place("task", id, selected, start);
     notify(`“${task.title}” is at ${formatHour(start)}`);
@@ -446,6 +451,7 @@ export function App() {
           onPlace={place}
           onSchedule={scheduleNext}
           onBlocked={() => notify("That time is taken")}
+          onCreate={newEventAt}
           onReplan={openReplan}
           onFocus={startFocus}
           onQuickAdd={() => setPalette(true)}
@@ -480,6 +486,7 @@ export function App() {
             onPlace={place}
             onSchedule={scheduleNext}
             onBlocked={() => notify("That time is taken")}
+            onCreate={newEventAt}
             onReplan={openReplan}
             onStartFresh={startFresh}
             quickAddRef={quickAddRef}

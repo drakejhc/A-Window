@@ -33,13 +33,16 @@ npm test
   sheet beside the window instead.
 - **Quick add** (`⌘K`, `/` or `N`) understands phrases like `Gym tomorrow 7am 45m #health`. With a time it goes
   on the timeline; with a day but no time it takes the next free slot; otherwise it goes to a list.
+- **Click** an empty part of the timeline to start an event at that time. The timeline covers the whole day,
+  midnight to midnight.
 - **Drag** blocks to move them (across days in Week view), or drag tasks from the tray. The clock button on a
   tray task finds the next free slot.
 - **Click** a block or task to edit it: category, time, length, checklist, notes, or delete (with undo).
 - **Replan** (`R`) moves tasks that fell behind into the free time left today.
 - **Focus** (`F`) works on the block happening now, or the next one, or a free session when the day is clear.
   Focused minutes are recorded on the block. `Space` pauses and `Esc` exits.
-- **The window**: search for any city and choose a room in the bottom bar.
+- **The window**: search for any city or town (Coquitlam, say) and choose a room in the bottom bar. Places you've
+  picked stay at the top of the list.
   - **Painted rooms:** the *Midnight study* and the *Cozy bedroom* are 2D paintings, with brushwork, hand-drawn
     edges and grain. Each is painted in night, day and lamplight and blended live. Sunlight through the window
     falls across the desk, bed and floor and slides with the real sun.

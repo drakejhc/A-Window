@@ -28,12 +28,23 @@ type Props = {
   onToggle: (id: string) => void;
   onPlace: (kind: Kind, id: string, date: string, start: number) => void;
   onBlocked: () => void;
+  /** Clicking an empty part of a day starts a new event there. */
+  onCreate: (date: string, start: number) => void;
 };
 
-export function Timeline({ data, days, todayKey, now, currentId, onOpen, onToggle, onPlace, onBlocked }: Props) {
+export function Timeline({ data, days, todayKey, now, currentId, onOpen, onToggle, onPlace, onBlocked, onCreate }: Props) {
   const scroller = useRef<HTMLDivElement>(null);
   const columns = useRef<HTMLDivElement>(null);
   const [preview, setPreview] = useState<{ date: string; start: number; duration: number; ok: boolean } | null>(null);
+  // Where a click would start a new event, shown while the pointer is over an empty part of a day.
+  const [hover, setHover] = useState<{ date: string; start: number } | null>(null);
+  /** The half hour under the pointer, if it's over the day's empty space rather than a block. */
+  const emptySlot = (e: React.MouseEvent<HTMLDivElement>, day: string) => {
+    if (e.target !== e.currentTarget) return null;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const start = clamp(Math.floor((START_HOUR + (e.clientY - rect.top) / HOUR_PX) * 2) / 2, START_HOUR, END_HOUR - 0.5);
+    return { date: day, start };
+  };
   const compact = days.length > 1;
   const showsToday = days.includes(todayKey);
 
@@ -101,7 +112,20 @@ export function Timeline({ data, days, todayKey, now, currentId, onOpen, onToggl
           onDrop={drop}
         >
           {days.map((day) => (
-            <div key={day} className="column" data-today={day === todayKey || undefined}>
+            <div
+              key={day}
+              className="column"
+              data-today={day === todayKey || undefined}
+              onMouseMove={(e) => {
+                const slot = dragging ? null : emptySlot(e, day);
+                setHover((h) => (slot && h?.date === slot.date && h.start === slot.start ? h : slot));
+              }}
+              onMouseLeave={() => setHover(null)}
+              onClick={(e) => {
+                const slot = emptySlot(e, day);
+                if (slot) onCreate(slot.date, slot.start);
+              }}
+            >
               {blocksOn(data, day).map((b) => {
                 const height = Math.max(compact ? 20 : 24, (b.duration / 60) * HOUR_PX - 3);
                 const roomy = height >= (compact ? 52 : 40);
@@ -159,6 +183,11 @@ export function Timeline({ data, days, todayKey, now, currentId, onOpen, onToggl
                   </div>
                 );
               })}
+              {hover?.date === day && !preview && (
+                <div className="add-hint" style={{ top: (hover.start - START_HOUR) * HOUR_PX + 1, height: HOUR_PX / 2 - 3 }} aria-hidden>
+                  + {formatHour(hover.start)}
+                </div>
+              )}
               {preview?.date === day && (
                 <div className="drop-preview" data-ok={preview.ok} style={{ top: (preview.start - START_HOUR) * HOUR_PX + 1, height: Math.max(24, (preview.duration / 60) * HOUR_PX - 3) }}>
                   {preview.ok ? formatHour(preview.start) : "That time is taken"}

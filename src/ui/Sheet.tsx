@@ -25,6 +25,7 @@ type Props = {
   onPlace: (kind: Kind, id: string, date: string, start: number) => void;
   onSchedule: (id: string) => void;
   onBlocked: () => void;
+  onCreate: (date: string, start: number) => void;
   onReplan: () => void;
   onStartFresh: () => void;
   quickAddRef: React.RefObject<HTMLInputElement | null>;
@@ -121,7 +122,7 @@ export function Sheet(p: Props) {
         )}
       </form>
 
-      <Timeline data={state} days={[selected]} todayKey={todayKey} now={p.now} currentId={p.currentId} onOpen={p.onOpen} onToggle={p.onToggle} onPlace={p.onPlace} onBlocked={p.onBlocked} />
+      <Timeline data={state} days={[selected]} todayKey={todayKey} now={p.now} currentId={p.currentId} onOpen={p.onOpen} onToggle={p.onToggle} onPlace={p.onPlace} onBlocked={p.onBlocked} onCreate={p.onCreate} />
 
       <Tray tasks={state.tasks} open={p.trayOpen} onOpenChange={p.onTrayOpen} onOpen={(id) => p.onOpen("task", id)} onToggle={p.onToggle} onSchedule={p.onSchedule} />
     </aside>

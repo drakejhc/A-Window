@@ -36,8 +36,11 @@ export const CATEGORIES: { value: Category; label: string }[] = [
   { value: "life", label: "Life" },
 ];
 export const DURATIONS = [15, 30, 45, 60, 75, 90, 120, 150, 180];
-export const START_HOUR = 6;
-export const END_HOUR = 23;
+/** The timeline covers the whole day, midnight to midnight, for night owls and night shifts. */
+export const START_HOUR = 0;
+export const END_HOUR = 24;
+/** Where finding a free slot starts on a day other than today, so nothing lands at 1 am by surprise. */
+export const DAY_START = 7;
 export const SNAP = 0.25;
 
 const pad = (n: number) => n.toString().padStart(2, "0");

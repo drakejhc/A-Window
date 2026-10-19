@@ -562,12 +562,19 @@ export class Renderer {
         const mr = r * 0.8,
           p = env.moonPhase,
           lit = 1 - Math.abs(p - 0.5) * 2;
-        const glow = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, mr * 7);
-        glow.addColorStop(0, rgba([200, 214, 255], 0.2 * vis * lit));
-        glow.addColorStop(1, rgba([200, 214, 255], 0));
+        // Low on the horizon the moon is dim and warm, seen through more air; high up it's bright and white. It
+        // also shines brighter the darker the sky, and is pale by day.
+        const high = smooth(-2, 30, env.moonAlt), dark = clamp(env.night);
+        const bright = (0.5 + 0.5 * high) * (0.4 + 0.6 * dark);
+        const tone = mixRGB([255, 192, 140], [240, 240, 230], high);
+        const halo = mixRGB([255, 200, 160], [200, 214, 255], high);
+        const glow = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, mr * (5 + 6 * lit * dark));
+        glow.addColorStop(0, rgba(halo, 0.34 * vis * (0.3 + 0.7 * lit) * bright));
+        glow.addColorStop(0.3, rgba(halo, 0.1 * vis * lit * bright));
+        glow.addColorStop(1, rgba(halo, 0));
         ctx.fillStyle = glow;
         ctx.fillRect(g.x, g.y, g.w, g.h);
-        ctx.fillStyle = rgba([236, 236, 226], vis);
+        ctx.fillStyle = rgba(tone, vis * (0.5 + 0.5 * bright));
         ctx.beginPath();
         ctx.arc(m.x, m.y, mr, 0, Math.PI * 2);
         ctx.fill();

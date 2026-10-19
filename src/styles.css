@@ -231,6 +231,21 @@ button:disabled { cursor: default; opacity: 0.45; }
   pointer-events: none;
 }
 .drop-preview[data-ok="false"] { border-color: var(--danger); background: rgba(229, 154, 143, 0.1); color: var(--danger); }
+/* Where a click on an empty part of the day would start a new event. */
+.add-hint {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 10px;
+  color: var(--faint);
+  font-size: 11.5px;
+  pointer-events: none;
+}
+.column { cursor: pointer; }
 .now-line { position: absolute; left: -4px; right: 0; height: 0; border-top: 1.5px solid var(--amber); pointer-events: none; z-index: 2; }
 .now-line::before { content: ""; position: absolute; left: -4px; top: -4.5px; width: 7px; height: 7px; border-radius: 50%; background: var(--amber); }
 .now-line span {
