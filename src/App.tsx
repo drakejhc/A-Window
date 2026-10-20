@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { blocksOn, currentBlock, DAY_START, END_HOUR, formatHour, fromKey, nowHour, parseTime, snap, START_HOUR, toKey, addDays, clamp, type Kind } from "@/planner/model";
 import { findOpenSlot, isSlipped, isSlotFree, planReplan, type ReplanResult } from "@/planner/planning";
-import { parseQuickAdd } from "@/planner/quickadd";
-import { usePlanner, type PlannerState } from "@/planner/store";
+import { parseQuickAdd, splitLines } from "@/planner/quickadd";
+import { usePlanner, type PlannerState, type TaskInput } from "@/planner/store";
 import { Dock, FOCUS_LENGTHS } from "@/ui/Dock";
 import { draftFor, Editor, newDraft, type Draft } from "@/ui/Editor";
 import { FocusCard, type FocusTarget } from "@/ui/FocusCard";
@@ -26,7 +26,7 @@ import { NowPlaying } from "@/ui/NowPlaying";
 import { SettingsPanel } from "@/ui/SettingsPanel";
 import { Welcome } from "@/ui/Welcome";
 import { Workspace, type Mode, type View } from "@/ui/Workspace";
-import type { Bucket } from "@/planner/model";
+import type { Block, Bucket } from "@/planner/model";
 
 const SIDE_W = 400;
 
@@ -134,10 +134,10 @@ export function App() {
   }
 
   const newEvent = () => setDraft(newDraft("event", selected, selected === todayKey ? `${String(Math.min(23, Math.ceil(now))).padStart(2, "0")}:00` : "09:00"));
-  // Clicking an empty part of the timeline starts an event at that time.
+  // Clicking an empty part of the timeline starts an event at that time (or a task, with the switch in the editor).
   const newEventAt = (date: string, start: number) => {
     setSelected(date);
-    setDraft(newDraft("event", date, `${String(Math.floor(start)).padStart(2, "0")}:${String(Math.round((start % 1) * 60)).padStart(2, "0")}`));
+    setDraft({ ...newDraft("event", date, `${String(Math.floor(start)).padStart(2, "0")}:${String(Math.round((start % 1) * 60)).padStart(2, "0")}`), picked: true });
   };
 
   function saveDraft() {
@@ -173,26 +173,43 @@ export function App() {
     withUndo(`Deleted “${draft.title}”${draft.repeat ? " and its repeats" : ""}`, before);
   }
 
-  function quickAdd(text: string) {
-    const p = parseQuickAdd(text, clock);
-    if (!p.title) return;
-    const duration = p.duration ?? 30;
-    let date = p.date ?? (p.start !== undefined ? selected : undefined);
-    let start: number | undefined;
-    if (date && p.start !== undefined) {
-      start = clamp(snap(p.start), START_HOUR, END_HOUR - duration / 60);
-      if (!isSlotFree(blocksOn(state, date), start, duration)) {
-        planner.addTask({ title: p.title, duration, category: p.category ?? "personal", bucket: p.bucket ?? "Today" });
-        return notify(`${formatHour(start)} is taken, so “${p.title}” went to your list instead`);
-      }
-    } else if (date) start = findOpenSlot(blocksOn(state, date), duration, date === todayKey ? now : DAY_START, END_HOUR);
-    if (start === undefined) date = undefined;
-    const bucket = p.bucket ?? (!p.date || p.date === todayKey ? "Today" : "This Week");
-    planner.addTask({ title: p.title, duration, category: p.category ?? "personal", bucket, date, start });
-    if (date && start !== undefined) {
-      setSelected(date);
-      notify(`“${p.title}” is on ${dayName(date)} at ${formatHour(start)}`);
-    } else notify(`Added “${p.title}” to ${bucket === "This Week" ? "this week" : bucket.toLowerCase()}`);
+  /** Adds a task from a quick-add phrase, or one per line from a pasted list. A phrase with a time goes on the
+   *  timeline, one with only a day takes that day's next free slot, and the rest go to `fallback` (or Today). */
+  function quickAdd(text: string, fallback?: Bucket) {
+    const tasks: TaskInput[] = [];
+    // Slots taken by earlier lines of the same paste, which aren't in `state` yet.
+    const placed: Block[] = [];
+    let message = "";
+    for (const line of splitLines(text)) {
+      const p = parseQuickAdd(line, clock);
+      if (!p.title) continue;
+      const duration = p.duration ?? 30;
+      const base = { title: p.title, duration, category: p.category ?? ("personal" as const) };
+      let date = p.date ?? (p.start !== undefined ? selected : undefined);
+      let start: number | undefined;
+      const busy = date ? [...blocksOn(state, date), ...placed.filter((b) => b.date === date)] : [];
+      if (date && p.start !== undefined) {
+        start = clamp(snap(p.start), START_HOUR, END_HOUR - duration / 60);
+        if (!isSlotFree(busy, start, duration)) {
+          tasks.push({ ...base, bucket: p.bucket ?? fallback ?? "Today" });
+          message = `${formatHour(start)} is taken, so “${p.title}” went to your list instead`;
+          continue;
+        }
+      } else if (date) start = findOpenSlot(busy, duration, date === todayKey ? now : DAY_START, END_HOUR);
+      if (start === undefined) date = undefined;
+      const bucket = p.bucket ?? (p.date ? (p.date === todayKey ? "Today" : "This Week") : fallback ?? "Today");
+      tasks.push({ ...base, bucket, date, start });
+      if (date && start !== undefined) {
+        placed.push({ kind: "task", id: "", date, title: p.title, start, duration, category: base.category, completed: false });
+        message = `“${p.title}” is on ${dayName(date)} at ${formatHour(start)}`;
+      } else message = `Added “${p.title}” to ${bucket === "This Week" ? "this week" : bucket.toLowerCase()}`;
+    }
+    if (!tasks.length) return;
+    // New tasks go to the top of their list, so add the last line first to keep the pasted order.
+    for (const t of [...tasks].reverse()) planner.addTask(t);
+    const last = tasks[tasks.length - 1]!;
+    if (tasks.length === 1 && last.date && last.start !== undefined) setSelected(last.date);
+    notify(tasks.length === 1 ? message : `Added ${tasks.length} tasks`);
   }
 
   function scheduleNext(id: string) {
@@ -459,6 +476,7 @@ export function App() {
           onReplan={openReplan}
           onFocus={startFocus}
           onQuickAdd={() => setPalette(true)}
+          onAddTask={quickAdd}
           onNewEvent={newEvent}
           onStartFresh={startFresh}
           onSettings={() => setSettingsOpen(true)}
@@ -525,7 +543,7 @@ export function App() {
         />
       )}
 
-      {palette && <QuickAddDialog todayKey={todayKey} onAdd={quickAdd} onClose={() => setPalette(false)} />}
+      {palette && <QuickAddDialog todayKey={todayKey} onAdd={quickAdd} onNewEvent={() => (setSheetOpen(true), newEvent())} onClose={() => setPalette(false)} />}
 
       {toast && (
         <div className="toast" role="status" key={toast.key}>

@@ -31,8 +31,11 @@ npm test
   the mini calendar, task lists and today's progress; Day, Week and Month views (`D`, `W`, `M`); and the task
   tray on the right. Prefer the window to stay in view? *Adjust → Planner → Side sheet* puts a slimmer day
   sheet beside the window instead.
-- **Quick add** (`⌘K`, `/` or `N`) understands phrases like `Gym tomorrow 7am 45m #health`. With a time it goes
-  on the timeline; with a day but no time it takes the next free slot; otherwise it goes to a list.
+- **Add a task** with the **Task** button (`⌘K`, `/` or `N`), or type into the *Add to…* field at the top of each
+  task list and in the tray. It understands phrases like `Gym tomorrow 7am 45m #health`. With a time it goes on the
+  timeline; with a day but no time it takes the next free slot; otherwise it goes to the list you're looking at.
+  Paste a list (one per line, bullets and checkboxes are fine) to add a task per line. A new item in the editor has
+  a Task / Event switch.
 - **Click** an empty part of the timeline to start an event at that time. The timeline covers the whole day,
   midnight to midnight.
 - **Drag** blocks to move them (across days in Week view), or drag tasks from the tray. The clock button on a

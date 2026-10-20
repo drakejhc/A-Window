@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseQuickAdd } from "@/planner/quickadd";
+import { parseQuickAdd, splitLines } from "@/planner/quickadd";
 
 describe("quick add parsing", () => {
   const today = new Date(2026, 9, 7); // Wed
@@ -12,5 +12,14 @@ describe("quick add parsing", () => {
   });
   it("keeps plain titles and buckets", () => {
     expect(parseQuickAdd("Call mom later", today)).toEqual({ title: "Call mom", bucket: "Later" });
+  });
+});
+
+describe("pasted lists", () => {
+  it("makes one phrase per line without bullets or checkboxes", () => {
+    expect(splitLines("- Buy milk\n* Call mom later\n\n1. Essay fri 2pm\n[ ] Laundry\n- [x] Gym 45m")).toEqual(["Buy milk", "Call mom later", "Essay fri 2pm", "Laundry", "Gym 45m"]);
+  });
+  it("leaves a single line alone", () => {
+    expect(splitLines("  Read chapter 3 ")).toEqual(["Read chapter 3"]);
   });
 });

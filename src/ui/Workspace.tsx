@@ -3,6 +3,7 @@ import { useState, type ReactNode } from "react";
 import { addDays, blocksOn, BUCKETS, formatDuration, formatHour, fromKey, startOfWeek, toKey, weekdayNames, type Bucket, type Kind, type Task } from "@/planner/model";
 import type { PlannerState } from "@/planner/store";
 
+import { AddTask } from "./AddTask";
 import { Icon } from "./icons";
 import { startTaskDrag, Timeline } from "./Timeline";
 import { Tray } from "./Tray";
@@ -37,6 +38,7 @@ type Props = {
   onReplan: () => void;
   onFocus: () => void;
   onQuickAdd: () => void;
+  onAddTask: (text: string, bucket?: Bucket) => void;
   onNewEvent: () => void;
   onStartFresh: () => void;
   onSettings: () => void;
@@ -144,8 +146,8 @@ export function Workspace(p: Props) {
             <button type="button" className="tool" onClick={p.onFocus} title="Focus (F)">
               <Icon name="timer" /> Focus
             </button>
-            <button type="button" className="tool" onClick={p.onQuickAdd} title="Quick add (⌘K)">
-              <Icon name="plus" /> Quick add <kbd>⌘K</kbd>
+            <button type="button" className="tool" onClick={p.onQuickAdd} title="Add a task (N or ⌘K)">
+              <Icon name="plus" /> Task <kbd>⌘K</kbd>
             </button>
             <button type="button" className="primary-btn" onClick={p.onNewEvent}>
               <Icon name="calendar" /> Event
@@ -165,7 +167,7 @@ export function Workspace(p: Props) {
         <div className="ws-body">
           <section className="ws-view">
             {p.mode === "tasks" ? (
-              <TasksView tasks={state.tasks} bucket={p.bucket} onOpen={(id) => p.onOpen("task", id)} onToggle={p.onToggle} />
+              <TasksView tasks={state.tasks} bucket={p.bucket} todayKey={todayKey} onAdd={p.onAddTask} onOpen={(id) => p.onOpen("task", id)} onToggle={p.onToggle} />
             ) : view === "month" ? (
               <MonthView state={state} selected={selected} todayKey={todayKey} onPick={(d) => (p.onSelect(d), p.onView("day"))} />
             ) : (
@@ -197,7 +199,7 @@ export function Workspace(p: Props) {
           </section>
           {p.trayOpen && (
             <aside className="ws-tray">
-              <Tray tasks={state.tasks} open onOpenChange={() => p.onTrayOpen(false)} onOpen={(id) => p.onOpen("task", id)} onToggle={p.onToggle} onSchedule={p.onSchedule} />
+              <Tray tasks={state.tasks} todayKey={todayKey} onAdd={p.onAddTask} open onOpenChange={() => p.onTrayOpen(false)} onOpen={(id) => p.onOpen("task", id)} onToggle={p.onToggle} onSchedule={p.onSchedule} />
             </aside>
           )}
         </div>
@@ -305,7 +307,7 @@ function MonthView({ state, selected, todayKey, onPick }: { state: PlannerState;
   );
 }
 
-function TasksView({ tasks, bucket, onOpen, onToggle }: { tasks: Task[]; bucket: Bucket; onOpen: (id: string) => void; onToggle: (id: string) => void }) {
+function TasksView({ tasks, bucket, todayKey, onAdd, onOpen, onToggle }: { tasks: Task[]; bucket: Bucket; todayKey: string; onAdd: (text: string, bucket?: Bucket) => void; onOpen: (id: string) => void; onToggle: (id: string) => void }) {
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
   const list = tasks.filter((t) => (q ? t.title.toLowerCase().includes(q) : t.bucket === bucket));
@@ -324,6 +326,7 @@ function TasksView({ tasks, bucket, onOpen, onToggle }: { tasks: Task[]; bucket:
   );
   return (
     <div className="tasks-view">
+      <AddTask todayKey={todayKey} onAdd={onAdd} bucket={bucket} placeholder={`Add to ${bucketLabel(bucket).toLowerCase()}, e.g. Essay draft fri 2pm 90m #study`} />
       <input className="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search all tasks" aria-label="Search all tasks" />
       <ul className="task-list">
         {open.length === 0 && <li className="tray-empty">{q ? "No tasks match." : `Nothing open in ${bucketLabel(bucket).toLowerCase()}.`}</li>}

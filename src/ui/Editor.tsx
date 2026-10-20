@@ -21,6 +21,8 @@ export type Draft = {
   repeat: Repeat | "";
   /** The day that was clicked, for "delete this day" on a repeating event. */
   occurrence: string;
+  /** A new item started by clicking a time on the timeline, so it keeps that time as a task too. */
+  picked?: boolean;
 };
 
 export function draftFor(data: PlannerData, kind: Kind, id: string, fallbackDate: string, occurrence = fallbackDate): Draft | null {
@@ -37,6 +39,13 @@ export function draftFor(data: PlannerData, kind: Kind, id: string, fallbackDate
 export const newDraft = (kind: Kind, date: string, time = ""): Draft => ({
   kind, title: "", category: kind === "event" ? "personal" : "study", duration: kind === "event" ? 60 : 30, date, time: kind === "event" ? time || "09:00" : time, bucket: "Today", meta: "", notes: "", subtasks: [], actual: 0, repeat: "", occurrence: date,
 });
+
+/** Turns a new item into a task or an event, keeping what's been typed. An event always has a time; a task keeps
+ *  one only if it was started from a time on the timeline, and otherwise goes to a list. */
+export function switchKind(d: Draft, kind: Kind): Draft {
+  if (d.kind === kind) return d;
+  return { ...d, kind, time: kind === "event" ? d.time || "09:00" : d.picked ? d.time : "" };
+}
 
 type Props = { draft: Draft; onChange: (d: Draft) => void; onSave: () => void; onCancel: () => void; onDelete: (onlyThisDay: boolean) => void; onUnschedule: () => void };
 
@@ -63,7 +72,17 @@ export function Editor({ draft, onChange, onSave, onCancel, onDelete, onUnschedu
         <button type="button" className="ghost-btn" onClick={onCancel}>
           <Icon name="left" /> Back
         </button>
-        <span className="eyebrow">{draft.id ? (isTask ? "Task" : "Event") : isTask ? "New task" : "New event"}</span>
+        {draft.id ? (
+          <span className="eyebrow">{isTask ? "Task" : "Event"}</span>
+        ) : (
+          <div className="seg" role="radiogroup" aria-label="New task or event">
+            {(["task", "event"] as const).map((k) => (
+              <button key={k} type="button" role="radio" aria-checked={draft.kind === k} onClick={() => onChange(switchKind(draft, k))}>
+                {k === "task" ? "Task" : "Event"}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <input className="editor-title" autoFocus value={draft.title} onChange={(e) => set("title", e.target.value)} placeholder={isTask ? "What needs doing?" : "What’s happening?"} aria-label="Title" />

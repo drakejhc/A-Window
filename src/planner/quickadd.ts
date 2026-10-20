@@ -38,3 +38,12 @@ export function parseQuickAdd(input: string, today = new Date()): QuickParse {
   out.title = text.replace(/\s+/g, " ").trim();
   return out;
 }
+
+/** Splits pasted text into one phrase per line, dropping list bullets and checkboxes ("- ", "1. ", "[ ] "), so a
+ *  list copied from notes becomes a task per line. */
+export function splitLines(input: string): string[] {
+  return input
+    .split(/\r?\n/)
+    .map((l) => l.replace(/^\s*(?:[-*•–]|\d+[.)])?\s*(?:\[[ xX]?\])?\s*/, "").trim())
+    .filter(Boolean);
+}

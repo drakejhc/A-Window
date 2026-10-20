@@ -2,11 +2,14 @@ import { useState } from "react";
 
 import { BUCKETS, formatDuration, type Bucket, type Task } from "@/planner/model";
 
+import { AddTask } from "./AddTask";
 import { Icon } from "./icons";
 import { startTaskDrag } from "./Timeline";
 
 type Props = {
   tasks: Task[];
+  todayKey: string;
+  onAdd: (text: string, bucket?: Bucket) => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onOpen: (id: string) => void;
@@ -16,8 +19,8 @@ type Props = {
 
 const LABEL: Record<Bucket, string> = { Today: "Today", "This Week": "This week", Later: "Later" };
 
-/** Unscheduled tasks, by list. Drag one onto the timeline, or let it find the next free slot. */
-export function Tray({ tasks, open, onOpenChange, onOpen, onToggle, onSchedule }: Props) {
+/** Unscheduled tasks, by list. Add to the list in view, drag one onto the timeline, or let it find the next free slot. */
+export function Tray({ tasks, todayKey, onAdd, open, onOpenChange, onOpen, onToggle, onSchedule }: Props) {
   const [bucket, setBucket] = useState<Bucket>("Today");
   const waiting = tasks.filter((t) => !t.completed && t.start === undefined);
   const list = waiting.filter((t) => t.bucket === bucket);
@@ -40,6 +43,7 @@ export function Tray({ tasks, open, onOpenChange, onOpen, onToggle, onSchedule }
           </div>
         )}
       </div>
+      {open && <AddTask todayKey={todayKey} onAdd={onAdd} bucket={bucket} placeholder={`Add to ${LABEL[bucket].toLowerCase()}`} compact />}
       {open && (
         <ul className="tray-list">
           {list.length === 0 && <li className="tray-empty">Nothing waiting in {LABEL[bucket].toLowerCase()}.</li>}
