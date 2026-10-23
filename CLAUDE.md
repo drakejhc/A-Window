@@ -10,3 +10,5 @@
   workflow builds and publishes it. The version must go up, or installed apps won't see the update.
 - The product's agreed objective is the checklist at the top of `docs/roadmap.md`. Work toward it, tick items off
   as they ship, and keep the log at the bottom of that file current.
+- The owner builds and runs the app on Windows from `C:\Users\drake\A-Window`. Whenever you give them commands to
+  run on their PC, make `cd C:\Users\drake\A-Window` the first command.
