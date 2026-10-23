@@ -797,3 +797,10 @@ input[type="range"], input[type="checkbox"] { accent-color: var(--amber); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ---------- use with Claude ---------- */
+.claude-setup { display: grid; gap: 10px; margin-top: 4px; }
+.copy-box { display: grid; gap: 5px; }
+.copy-label { font-size: 12px; color: var(--muted); }
+.copy-row { display: flex; align-items: flex-start; gap: 8px; }
+.copy-row pre { flex: 1; min-width: 0; margin: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--field); font: 11.5px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-all; user-select: all; max-height: 160px; overflow: auto; }

@@ -41,7 +41,7 @@ export function SettingsPanel({ layout, onLayout, focusMinutes, onFocusMinutes, 
     void desktop?.getSettings().then(setDesk);
   }, []);
 
-  async function setDesktop(patch: Partial<DesktopSettings>) {
+  async function setDesktop(patch: Partial<Omit<DesktopSettings, "claudeLaunch">>) {
     if (!desktop) return;
     const next = await desktop.setSettings(patch);
     setDesk(next);
@@ -147,6 +147,19 @@ export function SettingsPanel({ layout, onLayout, focusMinutes, onFocusMinutes, 
           </section>
         )}
 
+        {desktop && desk && (
+          <section>
+            <h3>Use with Claude</h3>
+            <Toggle
+              label="Let Claude see and change my plan"
+              hint="Your own Claude (Claude Code or the Claude desktop app) can read your plan and add, move or check things off while A Window is open. Each change shows here with Undo. Nothing goes anywhere but your Claude"
+              checked={desk.claude}
+              onChange={(claude) => void setDesktop({ claude })}
+            />
+            {desk.claude && desk.claudeLaunch && <ClaudeSetup launch={desk.claudeLaunch} />}
+          </section>
+        )}
+
         <section>
           <h3>Your data</h3>
           <p className="hint">
@@ -217,6 +230,47 @@ export function SettingsPanel({ layout, onLayout, focusMinutes, onFocusMinutes, 
         </section>
 
         <p className="about">A Window{desktop ? ` ${desktop.version}` : ""} · Weather by Open-Meteo</p>
+      </div>
+    </div>
+  );
+}
+
+const quote = (s: string) => (/[\s"]/.test(s) ? `"${s.replace(/"/g, '\\"')}"` : s);
+
+/** The one-time setup for Claude Code and the Claude desktop app, ready to copy. */
+function ClaudeSetup({ launch }: { launch: NonNullable<DesktopSettings["claudeLaunch"]> }) {
+  const env = Object.entries(launch.env).map(([k, v]) => `-e ${k}=${quote(v)}`);
+  const code = ["claude mcp add a-window --scope user", ...env, "--", ...[launch.command, ...launch.args].map(quote)].join(" ");
+  const config = JSON.stringify({ mcpServers: { "a-window": launch } }, null, 2);
+  return (
+    <div className="claude-setup">
+      <p className="hint">Set it up once, in whichever Claude you use:</p>
+      <CopyBox label="Claude Code: run this in a terminal" text={code} />
+      <CopyBox label="Claude desktop app: Settings → Developer → Edit Config, add this to claude_desktop_config.json, then restart Claude" text={config} />
+      <p className="hint">Then ask Claude something like “What’s on today?” or “Add a 30 minute walk at 5pm”.</p>
+    </div>
+  );
+}
+
+function CopyBox({ label, text }: { label: string; text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="copy-box">
+      <span className="copy-label">{label}</span>
+      <div className="copy-row">
+        <pre>{text}</pre>
+        <button
+          type="button"
+          className="tool"
+          onClick={() =>
+            void navigator.clipboard.writeText(text).then(() => {
+              setCopied(true);
+              window.setTimeout(() => setCopied(false), 1600);
+            })
+          }
+        >
+          {copied ? "Copied" : "Copy"}
+        </button>
       </div>
     </div>
   );

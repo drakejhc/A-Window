@@ -78,15 +78,22 @@ npm test
   It reads the player locally (AppleScript on macOS, the Spotify window on Windows): no account or API key.
 - **Menu bar / tray icon**: open the planner, start Focus, toggle the wallpaper, quit. Closing the window keeps the app
   (and the wallpaper) running there.
+- **Use with Claude**: turn on *Settings → Use with Claude* and add the line it shows to Claude Code or the Claude
+  desktop app, once. Then your own Claude can read and change your plan while A Window is open ("what's on today?",
+  "move my study blocks to tomorrow afternoon"), and each change shows in the app at once with Undo. It's off until you
+  turn it on, only reachable from your own computer, and needs no API key; nothing goes anywhere but your Claude.
+  How it works: `electron/mcp.cjs` is an MCP server Claude launches (the app's executable run as plain Node); it calls
+  a token-protected bridge on 127.0.0.1 in the running app (`electron/bridge.cjs`), which hands each call to the page,
+  where `src/planner/actions.ts` applies it. See `docs/claude-connector.md`.
 
 ## How it fits together
 
 | Folder | What's in it |
 | --- | --- |
 | `src/window/` | The live window: astronomy, weather, environment, renderer, procedural audio, and the scenes in `packs/` |
-| `src/planner/` | The planner's data model, storage, quick-add parser and replanning (pure functions, tested) |
+| `src/planner/` | The planner's data model, storage, quick-add parser, replanning and the actions Claude can take (pure functions, tested) |
 | `src/ui/` | React components: the scene canvas, day sheet, timeline, tray, editor, focus card, dock |
-| `electron/` | The desktop shell: serves the app from a private `awindow://` origin, plus the tray, wallpaper and music |
+| `electron/` | The desktop shell: serves the app from a private `awindow://` origin, plus the tray, wallpaper, music and the Claude bridge |
 | `src/settings.ts`, `src/music.ts`, `src/desktop.ts` | Preferences, now-playing state, and the bridge to the desktop shell |
 | `scripts/artifact.mjs` | Turns the build into a page for publishing as a Claude artifact (`npm run artifact`) |
 

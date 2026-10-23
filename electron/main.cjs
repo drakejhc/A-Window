@@ -6,8 +6,25 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 
+// `--mcp`: Claude started the app to read and change the plan. Run the MCP server (mcp.cjs) as plain Node with this
+// same executable, passing stdin and stdout straight through, and open no windows. It talks to the running app over
+// the bridge below.
+if (process.argv.includes("--mcp")) {
+  app.dock?.hide();
+  const script = path.join(__dirname, "mcp.cjs").replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`);
+  const child = require("node:child_process").spawn(process.execPath, [script], {
+    stdio: "inherit",
+    windowsHide: true,
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: "1", A_WINDOW_DATA: app.getPath("userData") },
+  });
+  child.on("exit", (code) => app.exit(code ?? 0));
+  child.on("error", () => app.exit(1));
+  return;
+}
+
 const { createWatcher } = require("./music.cjs");
 const { openWallpaper } = require("./wallpaper.cjs");
+const { createBridge } = require("./bridge.cjs");
 
 const DIST = path.join(__dirname, "../dist");
 const APP_URL = "awindow://app/index.html";
@@ -20,10 +37,11 @@ protocol.registerSchemesAsPrivileged([
 // The window's ambience should start with the app, without waiting for a click.
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 
-const defaults = { wallpaper: false, wallpaperStyle: "room", openAtLogin: false, bounds: { width: 1440, height: 900 } };
+const defaults = { wallpaper: false, wallpaperStyle: "room", openAtLogin: false, claude: false, bounds: { width: 1440, height: 900 } };
 let store = { ...defaults };
 let quitting = false;
 app.on("before-quit", () => (quitting = true));
+app.on("will-quit", () => bridge.stop());
 function load() {
   try {
     store = { ...defaults, ...JSON.parse(fs.readFileSync(STORE(), "utf8")) };
@@ -56,6 +74,22 @@ const watcher = createWatcher((np) => {
   }
 });
 const updateMusicWatch = () => watcher.set(musicWanted.size > 0);
+
+// Use with Claude: a local bridge the MCP server calls, which hands each tool call to the page (see bridge.cjs).
+const bridge = createBridge({
+  file: () => path.join(app.getPath("userData"), "mcp.json"),
+  page: () => {
+    if (!main) createMain({ show: false });
+    return main.webContents;
+  },
+});
+/** How Claude starts the MCP server: this app's executable running mcp.cjs as plain Node, so no window system
+ *  starts (which also works with no display, and shows no Dock icon). `--mcp` above does the same, more slowly. */
+const claudeLaunch = () => ({
+  command: process.execPath,
+  args: [app.isPackaged ? path.join(process.resourcesPath, "app.asar.unpacked", "electron", "mcp.cjs") : path.join(__dirname, "mcp.cjs")],
+  env: { ELECTRON_RUN_AS_NODE: "1", A_WINDOW_DATA: app.getPath("userData") },
+});
 
 /** The saved window position, if it is still on a connected screen; otherwise just the size, so the window opens
  *  centred on the main screen (for example after an external monitor has been unplugged). */
@@ -136,6 +170,19 @@ async function applyWallpaper() {
   return "The wallpaper couldn’t be placed behind the desktop icons on this version of Windows.";
 }
 
+/** Starts or stops the Claude bridge to match the setting; returns an error message if it couldn't start. */
+async function applyBridge() {
+  if (!store.claude) return void bridge.stop();
+  try {
+    await bridge.start();
+    return undefined;
+  } catch {
+    store.claude = false;
+    save();
+    return "Claude couldn’t be connected: the app couldn’t open its local connection.";
+  }
+}
+
 function applyLogin() {
   if (process.platform === "linux") return;
   app.setLoginItemSettings({ openAtLogin: store.openAtLogin, openAsHidden: true, args: ["--hidden"] });
@@ -206,12 +253,14 @@ ipcMain.handle("desktop-settings", async (_e, patch) => {
     if (typeof patch.wallpaper === "boolean") store.wallpaper = patch.wallpaper;
     if (patch.wallpaperStyle === "room" || patch.wallpaperStyle === "view") store.wallpaperStyle = patch.wallpaperStyle;
     if (typeof patch.openAtLogin === "boolean") store.openAtLogin = patch.openAtLogin;
+    if (typeof patch.claude === "boolean") store.claude = patch.claude;
     save();
+    if (store.claude !== before.claude) error = await applyBridge();
     if (store.wallpaper !== before.wallpaper || (store.wallpaper && store.wallpaperStyle !== before.wallpaperStyle)) error = await applyWallpaper();
     if (store.openAtLogin !== before.openAtLogin) applyLogin();
     refreshTray();
   }
-  return { wallpaper: store.wallpaper, wallpaperStyle: store.wallpaperStyle, openAtLogin: store.openAtLogin, ...(error ? { error } : {}) };
+  return { wallpaper: store.wallpaper, wallpaperStyle: store.wallpaperStyle, openAtLogin: store.openAtLogin, claude: store.claude, claudeLaunch: claudeLaunch(), ...(error ? { error } : {}) };
 });
 const musicSenders = new Set();
 ipcMain.on("music-watch", (e, on) => {
@@ -230,6 +279,9 @@ ipcMain.on("music-watch", (e, on) => {
   updateMusicWatch();
 });
 ipcMain.on("show-window", () => showMain());
+ipcMain.on("planner-reply", (e, reply) => {
+  if (main && e.sender === main.webContents) bridge.reply(reply);
+});
 
 // A copy of the plan in the app's folder for each of the last 14 days it was used, so a wiped or broken local
 // storage never loses everything.
@@ -271,6 +323,7 @@ else {
     refreshTray = buildTray();
     createMain({ show: !hidden });
     await applyWallpaper();
+    await applyBridge();
     watchForUpdates();
     app.on("activate", () => showMain());
   });

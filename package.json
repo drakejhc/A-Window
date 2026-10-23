@@ -44,6 +44,9 @@
       "electron/**",
       "dist/**"
     ],
+    "asarUnpack": [
+      "electron/mcp.cjs"
+    ],
     "directories": {
       "output": "release",
       "buildResources": "build"

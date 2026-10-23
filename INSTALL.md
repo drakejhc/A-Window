@@ -43,6 +43,15 @@ Not sure which Mac you have? Apple menu → **About This Mac**. "Chip: Apple M�
   with the album art spinning on it, the lamp takes on the album's colour, a small player shows in the corner, and the
   window's own ambience turns down so it doesn't compete with your music.
 - **Reminders** five minutes before each block, if you turn them on.
+- **Use with Claude.** Let your own Claude (Claude Code or the Claude desktop app) see and change your plan. Turn on
+  Settings → *Use with Claude*, then copy the line it shows:
+  - **Claude Code:** paste the `claude mcp add …` line into a terminal and press Enter.
+  - **Claude desktop app:** Settings → Developer → Edit Config, paste the snippet into `claude_desktop_config.json`
+    (merge it into `mcpServers` if you already have one), save, and restart Claude.
+
+  Then ask Claude something like "What's on today?" or "Add a 30 minute walk at 5pm". A Window has to be open (it can
+  be hidden in the tray). Every change Claude makes shows in the app with Undo. If you move or reinstall the app, copy
+  the line again.
 
 ## Your data
 

@@ -14,13 +14,25 @@ export type NowPlaying = {
   at: number;
 };
 
-export type DesktopSettings = { wallpaper: boolean; wallpaperStyle: "room" | "view"; openAtLogin: boolean };
+export type DesktopSettings = {
+  wallpaper: boolean;
+  wallpaperStyle: "room" | "view";
+  openAtLogin: boolean;
+  /** Use with Claude: the local bridge that lets the user's own Claude read and change the plan. */
+  claude: boolean;
+  /** How Claude starts the app's MCP server. */
+  claudeLaunch?: { command: string; args: string[]; env: Record<string, string> };
+};
+
+/** A tool call from Claude (see electron/bridge.cjs), and the page's answer. */
+export type PlannerRequest = { id: number; tool: string; args: unknown };
+export type PlannerReply = { id: number; ok: true; result: unknown } | { id: number; ok: false; error: string };
 
 export type DesktopBridge = {
   platform: "darwin" | "win32" | "linux";
   version: string;
   getSettings(): Promise<DesktopSettings>;
-  setSettings(patch: Partial<DesktopSettings>): Promise<DesktopSettings & { error?: string }>;
+  setSettings(patch: Partial<Omit<DesktopSettings, "claudeLaunch">>): Promise<DesktopSettings & { error?: string }>;
   watchMusic(on: boolean): void;
   musicControl(command: "playpause" | "next" | "previous"): void;
   onNowPlaying(cb: (np: NowPlaying | null) => void): () => void;
@@ -31,6 +43,8 @@ export type DesktopBridge = {
   /** Saves today's copy of the plan in the app's backups folder. */
   backup(json: string): void;
   openBackups(): void;
+  onPlannerRequest(cb: (request: PlannerRequest) => void): () => void;
+  plannerReply(reply: PlannerReply): void;
 };
 
 export const desktop: DesktopBridge | null = (window as unknown as { aWindow?: DesktopBridge }).aWindow ?? null;

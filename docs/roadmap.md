@@ -212,6 +212,10 @@ Baseline so far:
     about 4 h of real new and full moons), and its lit side facing the sun.
   - your own background: a picture or video in place of the window and the room, with an optional night one that
     fades in at sunset, dimming and live rain and snow over it.
+  - use with Claude: the user's own Claude reads and changes the plan through a local MCP server and bridge, with
+    Undo in the app (`docs/claude-connector.md`);
+  - adding tasks made obvious: a Task button, an add field in every list and the tray, pasted lists, and a
+    Task/Event switch in the editor.
 - **In progress:** none.
 - **Next:** new painted places (a sea cliff view, a rainy café room, a Tokyo alley view), when the owner wants them.
 - **Learned:** in headless software rendering, a full painted-room paint takes 5–10 s at desktop sizes. The

@@ -1,5 +1,7 @@
 # Build plan: let people use their own Claude to update their plan
 
+**Status: built** (see "As built" at the end).
+
 Goal: a user types into Claude Code or the Claude desktop app something like *"move my study blocks to
 tomorrow afternoon and add 30 minutes for groceries"*, and Claude edits their A Window planner. Each user uses
 their own Claude subscription; the app sends nothing to Anthropic itself and needs no API key.
@@ -67,3 +69,21 @@ Claude Code / Claude desktop ──stdio──▶ electron/mcp.cjs (MCP server, 
 - `npx tsc --noEmit -p .` and `npx vitest run` pass, with tests for `actions.ts`.
 - With the app open, `claude mcp add …` then "what's on today?" and "add a 30 min walk at 5pm" work, and the
   block appears in A Window without a reload.
+
+## As built
+
+- `src/planner/actions.ts` (`runAction`), tested in `src/test/actions.test.ts`. Times are "HH:MM" 24-hour strings
+  rather than decimal hours, which models get right more reliably. Replanning counts repeating events as busy on
+  the days they repeat. There's one extra tool, `unschedule_task`, and `get_day` takes `days` (up to 14).
+- The bridge is `electron/bridge.cjs`, used by `electron/main.cjs` (setting `claude` in `desktop.json`). Besides the
+  token it turns away requests with an `Origin` header or a `Host` other than 127.0.0.1, so a web page can't reach it.
+- `electron/mcp.cjs` implements MCP's stdio JSON-RPC by hand with Node built-ins, so it needs no dependencies and can
+  sit outside the asar (`asarUnpack`).
+- **Launching it.** `"<A Window>" --mcp` works as planned, but it boots Electron's browser process first, which dies
+  with no display (Linux over SSH) and flashes a Dock icon on macOS. So the setup line in Settings runs the same
+  executable as plain Node instead: `ELECTRON_RUN_AS_NODE=1 "<A Window>" "<resources>/app.asar.unpacked/electron/mcp.cjs"`,
+  the way VS Code's `code` command works. It starts in about 50 ms. Claude Code gets
+  `claude mcp add a-window --scope user -e … -- …` (user scope, so it works from any folder).
+- `src/test/claude-bridge.test.ts` runs the MCP server as its own process against a real bridge and the real
+  actions. It was also checked against the running Electron app: tool calls change the plan live, with the
+  "Claude added … · Undo" toast.

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { blocksOn, currentBlock, DAY_START, END_HOUR, formatHour, fromKey, nowHour, parseTime, snap, START_HOUR, toKey, addDays, clamp, type Kind } from "@/planner/model";
+import { ActionError, runAction } from "@/planner/actions";
 import { findOpenSlot, isSlipped, isSlotFree, planReplan, type ReplanResult } from "@/planner/planning";
 import { parseQuickAdd, splitLines } from "@/planner/quickadd";
 import { usePlanner, type PlannerState, type TaskInput } from "@/planner/store";
@@ -14,7 +15,7 @@ import { Replan } from "@/ui/Replan";
 import { Scene } from "@/ui/Scene";
 import { Sheet } from "@/ui/Sheet";
 import { useWindow } from "@/ui/use-window";
-import { desktop } from "@/desktop";
+import { desktop, isWallpaper } from "@/desktop";
 import { makeBackup } from "@/backup";
 import { loadBackdrop } from "@/backdrop";
 import { useMusic, watchMusic } from "@/music";
@@ -293,6 +294,33 @@ export function App() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [setSheetOpen, setView]);
+
+  // Use with Claude: tool calls from the user's own Claude arrive through the desktop bridge and run against the
+  // live plan, so the change shows at once and can be undone (see src/planner/actions.ts).
+  const latest = useRef(state);
+  latest.current = state;
+  const notifyRef = useRef(notify);
+  notifyRef.current = notify;
+  useEffect(() => {
+    if (!desktop || isWallpaper) return;
+    return desktop.onPlannerRequest(({ id, tool, args }) => {
+      try {
+        const at = new Date();
+        const out = runAction(latest.current, tool, args, { today: toKey(at), now: nowHour(at), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
+        if (out.data) {
+          const before = latest.current;
+          const next = { ...out.data, sample: false };
+          // Several calls can arrive before React re-renders; each builds on the one before.
+          latest.current = next;
+          planner.restore(next);
+          notifyRef.current(`Claude ${out.summary ?? "changed your plan"}`, () => planner.restore(before));
+        }
+        desktop!.plannerReply({ id, ok: true, result: out.result });
+      } catch (e) {
+        desktop!.plannerReply({ id, ok: false, error: e instanceof ActionError ? e.message : "Something went wrong in A Window." });
+      }
+    });
+  }, [planner.restore]);
 
   // Reminders: a notification five minutes before each block on today's plan.
   const stateRef = useRef(state);

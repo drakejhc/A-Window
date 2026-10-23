@@ -19,4 +19,6 @@ contextBridge.exposeInMainWorld("aWindow", {
   show: () => ipcRenderer.send("show-window"),
   backup: (json) => ipcRenderer.send("backup", String(json)),
   openBackups: () => ipcRenderer.send("open-backups"),
+  onPlannerRequest: (cb) => listen("planner-request", cb),
+  plannerReply: (reply) => ipcRenderer.send("planner-reply", reply),
 });
